@@ -56,7 +56,17 @@
         playTone(300, 'triangle', 0.2, 0.1);
         setTimeout(() => playTone(250, 'triangle', 0.3, 0.1), 200);
       },
-      playBGM: () => {
+      playMenuBGM: () => {
+        if(!ctx) return;
+        if(bgmInterval) clearInterval(bgmInterval);
+        const notes = [261.63, 392.00, 329.63, 392.00]; // Calmer melody
+        let step = 0;
+        bgmInterval = setInterval(() => {
+          if(!isMuted) playTone(notes[step % notes.length], 'triangle', 0.2, 0.015);
+          step++;
+        }, 600);
+      },
+      playRaceBGM: () => {
         if(!ctx) return;
         if(bgmInterval) clearInterval(bgmInterval);
         const notes = [261.63, 329.63, 392.00, 329.63, 440.00, 392.00, 329.63, 261.63]; // Playful melody
@@ -77,10 +87,21 @@
     AudioController.init();
     const muted = AudioController.toggleMute();
     e.target.textContent = muted ? '🔈' : '🔊';
+    // If not muted and we are on start screen, play menu BGM
+    if(!muted && screens.start.classList.contains('active')) {
+       AudioController.playMenuBGM();
+    }
   });
-  // Init audio on first interaction anywhere
-  document.body.addEventListener('click', AudioController.init, {once:true});
-  document.body.addEventListener('keydown', AudioController.init, {once:true});
+
+  // Init audio and play menu BGM on first interaction anywhere
+  function firstInteraction() {
+    AudioController.init();
+    if(screens.start.classList.contains('active')) {
+      AudioController.playMenuBGM();
+    }
+  }
+  document.body.addEventListener('click', firstInteraction, {once:true});
+  document.body.addEventListener('keydown', firstInteraction, {once:true});
 
 
   // ---------- State ----------
@@ -466,7 +487,7 @@
         void countdownText.offsetWidth;
         countdownText.style.animation = 'popIn 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards';
         AudioController.playGo();
-        AudioController.playBGM();
+        AudioController.playRaceBGM();
         setTimeout(() => {
           countdownOverlay.style.display = 'none';
           isCountdown = false;
@@ -648,6 +669,7 @@
   document.getElementById('changeLevelBtn').addEventListener('click', function(){
     AudioController.playClick();
     showScreen('start');
+    AudioController.playMenuBGM();
   });
 
   // Init
