@@ -5,6 +5,7 @@
   const AudioController = (function(){
     let ctx = null;
     let isMuted = false;
+    let bgmInterval = null;
 
     function initCtx(){
       if(!ctx){
@@ -54,6 +55,20 @@
       playLose: () => {
         playTone(300, 'triangle', 0.2, 0.1);
         setTimeout(() => playTone(250, 'triangle', 0.3, 0.1), 200);
+      },
+      playBGM: () => {
+        if(!ctx) return;
+        if(bgmInterval) clearInterval(bgmInterval);
+        const notes = [261.63, 329.63, 392.00, 329.63, 440.00, 392.00, 329.63, 261.63]; // Playful melody
+        let step = 0;
+        bgmInterval = setInterval(() => {
+          if(!isMuted) playTone(notes[step % notes.length], 'sine', 0.2, 0.02);
+          step++;
+        }, 300);
+      },
+      stopBGM: () => {
+        if(bgmInterval) clearInterval(bgmInterval);
+        bgmInterval = null;
       }
     };
   })();
@@ -73,6 +88,9 @@
   let level = null;
   let raceOver = true;
   let isCountdown = false;
+  let p1Name = "Kamu";
+  let p2Name = "Pemain 2";
+  let pendingLevel = null;
   
   const state = {
     p1: { pos:0, score:0, streak:0, answer:null, isAnswering:false, bestStreak:0 },
@@ -97,6 +115,7 @@
   // ---------- UI Elements ----------
   const screens = {
     start: document.getElementById('screen-start'),
+    name: document.getElementById('screen-name'),
     game: document.getElementById('screen-game'),
     end: document.getElementById('screen-end')
   };
@@ -229,7 +248,7 @@
     smoke.className = 'smoke';
     // position relative to car
     const carLeft = parseFloat(carEl.style.left) || 0;
-    smoke.style.left = `calc(${carLeft}% - 10px)`;
+    smoke.style.left = `calc(${carLeft}% - 25px)`;
     smoke.style.top = '50%';
     smoke.style.transform = 'translateY(-50%)';
     laneEl.appendChild(smoke);
@@ -447,6 +466,7 @@
         void countdownText.offsetWidth;
         countdownText.style.animation = 'popIn 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards';
         AudioController.playGo();
+        AudioController.playBGM();
         setTimeout(() => {
           countdownOverlay.style.display = 'none';
           isCountdown = false;
@@ -483,7 +503,8 @@
     levelValue.textContent = LEVEL_LABELS[lvl];
     
     if(gameMode === '1p'){
-      laneLabelP1.textContent = 'KAMU';
+      p1Name = "Kamu";
+      laneLabelP1.textContent = p1Name.toUpperCase();
       laneLabelP2.textContent = 'CPU 1';
       laneCPU2.style.display = 'block';
       panelsContainer.classList.remove('two-player');
@@ -494,15 +515,17 @@
       document.getElementById('labelPanelP1').textContent = 'Pertanyaan';
       // Hide key labels in 1P mode using CSS rule injection or JS logic inside renderQuestionFor
     } else {
-      laneLabelP1.textContent = 'PEMAIN 1';
-      laneLabelP2.textContent = 'PEMAIN 2';
+      laneLabelP1.textContent = p1Name.toUpperCase();
+      laneLabelP2.textContent = p2Name.toUpperCase();
       laneCPU2.style.display = 'none';
       panelsContainer.classList.add('two-player');
       panelP2.style.display = 'block';
       hudP2.style.display = 'block';
       hudStreakP2.style.display = 'block';
-      document.getElementById('hudLabelP1').textContent = 'Skor P1';
-      document.getElementById('labelPanelP1').textContent = 'Pemain 1';
+      document.getElementById('hudLabelP1').textContent = `Skor ${p1Name}`;
+      document.getElementById('labelPanelP1').textContent = p1Name;
+      document.getElementById('hudP2').querySelector('.label').textContent = `Skor ${p2Name}`;
+      document.getElementById('panelP2').querySelector('.panel-label').textContent = p2Name;
     }
     
     updateHud();
@@ -517,6 +540,7 @@
 
   function endRace(winner){
     raceOver = true;
+    AudioController.stopBGM();
     if(cpuTimer) clearInterval(cpuTimer);
 
     const endEmoji = document.getElementById('endEmoji');
@@ -550,14 +574,14 @@
       // 2P Mode
       if(winner === 'p1'){
         endEmoji.textContent = '🥇';
-        endTitle.textContent = 'Pemain 1 Menang!';
-        endSubtitle.textContent = 'Selamat untuk Pemain 1!';
+        endTitle.textContent = `${p1Name} Menang!`;
+        endSubtitle.textContent = `Selamat untuk ${p1Name}!`;
         AudioController.playWin();
         triggerConfetti();
       } else if(winner === 'p2') {
         endEmoji.textContent = '🥇';
-        endTitle.textContent = 'Pemain 2 Menang!';
-        endSubtitle.textContent = 'Selamat untuk Pemain 2!';
+        endTitle.textContent = `${p2Name} Menang!`;
+        endSubtitle.textContent = `Selamat untuk ${p2Name}!`;
         AudioController.playWin();
         triggerConfetti();
       } else {
@@ -569,10 +593,10 @@
       
       statsContainer.innerHTML = `
         <div class="end-stat" style="background:#EAF6FF; border-color:var(--player1-color);">
-          <div class="num" style="color:var(--player1-color)">${state.p1.score}</div><div class="lab">Benar P1</div>
+          <div class="num" style="color:var(--player1-color)">${state.p1.score}</div><div class="lab">Benar ${p1Name}</div>
         </div>
         <div class="end-stat" style="background:#FFF3E0; border-color:var(--player2-color);">
-          <div class="num" style="color:var(--player2-color)">${state.p2.score}</div><div class="lab">Benar P2</div>
+          <div class="num" style="color:var(--player2-color)">${state.p2.score}</div><div class="lab">Benar ${p2Name}</div>
         </div>
       `;
     }
@@ -590,8 +614,30 @@
   // ---------- Init Events ----------
   document.querySelectorAll('.level-btn').forEach(btn => {
     btn.addEventListener('click', function(){
-      startRace(btn.getAttribute('data-mode'), btn.getAttribute('data-level'));
+      AudioController.init();
+      const mode = btn.getAttribute('data-mode');
+      const lvl = btn.getAttribute('data-level');
+      if (mode === '2p') {
+        pendingLevel = lvl;
+        document.getElementById('inputNameP1').value = '';
+        document.getElementById('inputNameP2').value = '';
+        showScreen('name');
+      } else {
+        startRace(mode, lvl);
+      }
     });
+  });
+  
+  document.getElementById('start2PBtn').addEventListener('click', function(){
+    AudioController.playClick();
+    p1Name = document.getElementById('inputNameP1').value.trim() || 'Pembalap Kiri';
+    p2Name = document.getElementById('inputNameP2').value.trim() || 'Pembalap Kanan';
+    startRace('2p', pendingLevel);
+  });
+  
+  document.getElementById('cancelNameBtn').addEventListener('click', function(){
+    AudioController.playClick();
+    showScreen('start');
   });
   
   document.getElementById('playAgainBtn').addEventListener('click', function(){

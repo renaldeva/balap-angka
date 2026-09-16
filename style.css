@@ -106,12 +106,19 @@ h1, h2, h3 { font-family: 'Baloo 2', cursive; margin: 0; }
   letter-spacing: 1px;
   line-height: 1.1;
 }
-.title-card .subtitle {
+.title-card .subtitle, .subtitle {
   margin-top: 8px;
   font-weight: 800;
   color: var(--ink);
   font-size: 1.1rem;
 }
+
+/* Name Input Screen */
+.name-input-row { display: flex; gap: 16px; margin: 24px 0; justify-content: center; flex-wrap: wrap; }
+.name-input-col { display: flex; flex-direction: column; gap: 8px; text-align: left; flex: 1; min-width: 150px; }
+.name-input-col label { font-weight: 800; font-size: 0.9rem; color: var(--ink); }
+.name-input-col input { font-family: 'Nunito', sans-serif; font-size: 1.1rem; font-weight: 700; padding: 12px; border-radius: 12px; border: 3px solid var(--sky-2); outline: none; }
+.name-input-col input:focus { border-color: var(--coral); }
 
 .cars-row {
   display: flex;
@@ -227,7 +234,7 @@ h1, h2, h3 { font-family: 'Baloo 2', cursive; margin: 0; }
 .racer {
   position: absolute;
   top: 50%;
-  transform: translate(0, -50%);
+  transform: translateY(-50%) scaleX(-1);
   font-size: 2rem;
   left: 0;
   transition: left 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
