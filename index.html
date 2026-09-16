@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Balap Angka - Game Matematika Seru</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<button class="audio-toggle" id="audioToggleBtn" title="Mute/Unmute">🔊</button>
+<div class="sun"></div>
+<div id="confetti-container"></div>
+
+<div class="app">
+
+  <!-- START SCREEN -->
+  <section id="screen-start" class="screen active">
+    <div class="card-panel title-card">
+      <div class="cars-row"><span>🏎️</span><span>🚙</span><span>🚕</span></div>
+      <h1>BALAP ANGKA</h1>
+      <div class="subtitle">Jawab soal matematika, menangkan balapannya!</div>
+
+      <div class="mode-select-grid">
+        <div class="mode-col">
+          <h3>1 Pemain vs CPU</h3>
+          <div class="level-select">
+            <button class="level-btn easy" data-level="easy" data-mode="1p">
+              <span>🟢 Kelas 1-2<br><small>Penjumlahan & pengurangan (1-20)</small></span>
+            </button>
+            <button class="level-btn medium" data-level="medium" data-mode="1p">
+              <span>🔵 Kelas 3-4<br><small>Perkalian & pembagian (1-10)</small></span>
+            </button>
+            <button class="level-btn hard" data-level="hard" data-mode="1p">
+              <span>🔴 Kelas 5-6<br><small>Campuran (+, -, ×, ÷)</small></span>
+            </button>
+          </div>
+        </div>
+
+        <div class="mode-col">
+          <h3>2 Pemain Lokal</h3>
+          <div class="level-select">
+            <button class="level-btn easy" data-level="easy" data-mode="2p">
+              <span>🟢 Kelas 1-2<br><small>P1(Q/W/A/S) vs P2(Arrows)</small></span>
+            </button>
+            <button class="level-btn medium" data-level="medium" data-mode="2p">
+              <span>🔵 Kelas 3-4<br><small>P1(Q/W/A/S) vs P2(Arrows)</small></span>
+            </button>
+            <button class="level-btn hard" data-level="hard" data-mode="2p">
+              <span>🔴 Kelas 5-6<br><small>P1(Q/W/A/S) vs P2(Arrows)</small></span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div id="bestScoreBox"></div>
+    </div>
+  </section>
+
+  <!-- GAME SCREEN -->
+  <section id="screen-game" class="screen">
+    <div class="hud">
+      <div class="hud-item" id="hudP1">
+        <div class="label" id="hudLabelP1">Skor P1</div>
+        <div class="value" id="scoreP1">0</div>
+      </div>
+      <div class="hud-item" id="hudStreakP1">
+        <div class="label">Beruntun</div>
+        <div class="value" id="streakP1">0</div>
+      </div>
+      <div class="hud-item" id="hudP2" style="display:none;">
+        <div class="label">Skor P2</div>
+        <div class="value" id="scoreP2">0</div>
+      </div>
+      <div class="hud-item" id="hudStreakP2" style="display:none;">
+        <div class="label">Beruntun P2</div>
+        <div class="value" id="streakP2">0</div>
+      </div>
+      <div class="hud-item">
+        <div class="label">Level</div>
+        <div class="value" id="levelValue">-</div>
+      </div>
+    </div>
+
+    <div class="track-wrap">
+      <div class="finish-line-bg"></div>
+      
+      <div class="lane" id="laneP1">
+        <div class="lane-label" id="laneLabelP1">KAMU</div>
+        <div class="racer" id="carP1" style="left:0%">🏎️</div>
+      </div>
+      <div class="lane" id="laneP2">
+        <div class="lane-label" id="laneLabelP2">CPU 1</div>
+        <div class="racer" id="carP2" style="left:0%">🚙</div>
+      </div>
+      <div class="lane" id="laneCPU2">
+        <div class="lane-label">CPU 2</div>
+        <div class="racer" id="carCPU2" style="left:0%">🚕</div>
+      </div>
+
+      <div class="countdown-overlay" id="countdownOverlay">
+        <div class="countdown-text" id="countdownText">3</div>
+      </div>
+    </div>
+
+    <div class="panels-container" id="panelsContainer">
+      <!-- Player 1 Panel -->
+      <div class="question-panel" id="panelP1">
+        <div class="panel-label panel-p1" id="labelPanelP1">Pemain 1</div>
+        <div class="question-text" id="questionTextP1">?</div>
+        <div class="answers-grid" id="answersGridP1"></div>
+        <div class="feedback" id="feedbackTextP1"></div>
+      </div>
+
+      <!-- Player 2 Panel (Hidden in 1P mode) -->
+      <div class="question-panel" id="panelP2" style="display:none;">
+        <div class="panel-label panel-p2">Pemain 2</div>
+        <div class="question-text" id="questionTextP2">?</div>
+        <div class="answers-grid" id="answersGridP2"></div>
+        <div class="feedback" id="feedbackTextP2"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- END SCREEN -->
+  <section id="screen-end" class="screen">
+    <div class="card-panel end-card">
+      <div class="end-emoji" id="endEmoji">🏆</div>
+      <h2 id="endTitle">Kamu Menang!</h2>
+      <div id="endSubtitle" style="font-weight:800;color:#7A7A94;margin-bottom:12px;"></div>
+      
+      <div id="endStatsContainer">
+        <!-- Injected via JS -->
+      </div>
+      
+      <div>
+        <button class="primary-btn" id="playAgainBtn">Main Lagi</button>
+        <button class="secondary-btn" id="changeLevelBtn">Menu Utama</button>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
