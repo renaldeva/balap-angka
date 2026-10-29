@@ -106,8 +106,9 @@
 
   // ---------- State ----------
   let gameMode = '1p'; // '1p' or '2p'
-  let currentClass = 'k1'; // 'k1', 'k2', 'k3', 'k4'
-  let currentDifficulty = 'easy'; // 'easy', 'medium', 'hard'
+  let selectedMode = '1p';
+  let selectedClass = 'k1'; // 'k1', 'k2', 'k3', 'k4'
+  let selectedDifficulty = 'easy'; // 'easy', 'medium', 'hard'
   let raceOver = true;
   let isCountdown = false;
   let p1Name = "Kamu";
@@ -125,10 +126,17 @@
   const FINISH = 100;
 
   const CLASS_TITLES = {
-    k1: 'Kelas 1 SD',
-    k2: 'Kelas 2 SD',
-    k3: 'Kelas 3 SD',
-    k4: 'Campuran 1-3'
+    k1: '🟢 Kelas 1 SD',
+    k2: '🟡 Kelas 2 SD',
+    k3: '🔴 Kelas 3 SD',
+    k4: '🟣 Campuran (1-3)'
+  };
+
+  const CLASS_SHORT = {
+    k1: 'Kelas 1',
+    k2: 'Kelas 2',
+    k3: 'Kelas 3',
+    k4: 'Campuran'
   };
 
   const DIFF_TITLES = {
@@ -160,16 +168,6 @@
     }
   };
 
-  function updateDifficultySubtitles(){
-    const subs = DIFF_SUBTITLES[currentClass] || DIFF_SUBTITLES.k1;
-    const sEasy = document.getElementById('sub-1p-easy');
-    const sMed = document.getElementById('sub-1p-medium');
-    const sHard = document.getElementById('sub-1p-hard');
-    if(sEasy) sEasy.textContent = subs.easy;
-    if(sMed) sMed.textContent = subs.medium;
-    if(sHard) sHard.textContent = subs.hard;
-  }
-
   // Controls map for 2P mode
   // P1 uses Q W A S
   const KEY_MAP_P1 = { 'q':0, 'w':1, 'a':2, 's':3 };
@@ -182,6 +180,7 @@
   // ---------- UI Elements ----------
   const screens = {
     start: document.getElementById('screen-start'),
+    difficulty: document.getElementById('screen-difficulty'),
     name: document.getElementById('screen-name'),
     game: document.getElementById('screen-game'),
     end: document.getElementById('screen-end')
@@ -222,6 +221,14 @@
   // Best score
   const bestScoreBox = document.getElementById('bestScoreBox');
 
+  // Difficulty screen elements
+  const diffClassBadge = document.getElementById('diffClassBadge');
+  const diffSubtitle = document.getElementById('diffSubtitle');
+  const diffDescEasy = document.getElementById('diffDescEasy');
+  const diffDescMedium = document.getElementById('diffDescMedium');
+  const diffDescHard = document.getElementById('diffDescHard');
+  const diffBestScoreBox = document.getElementById('diffBestScoreBox');
+
   // Countdown
   const countdownOverlay = document.getElementById('countdownOverlay');
   const countdownText = document.getElementById('countdownText');
@@ -239,21 +246,19 @@
   }
   function renderBestScores(){
     try{
-      const bE = getBestScore(currentClass, 'easy');
-      const bM = getBestScore(currentClass, 'medium');
-      const bH = getBestScore(currentClass, 'hard');
-      const hasAny = bE > 0 || bM > 0 || bH > 0;
-      if(hasAny){
-        bestScoreBox.innerHTML = `
-          <div class="best-score">
-            🏅 Rekor (1P) ${CLASS_TITLES[currentClass]} — 
-            🟢 Mudah: ${bE} &nbsp;|&nbsp; 🟡 Sedang: ${bM} &nbsp;|&nbsp; 🔴 Sulit: ${bH}
-          </div>`;
+      const parts = ['k1','k2','k3','k4'].map(cls => {
+        const best = Math.max(
+          getBestScore(cls, 'easy'),
+          getBestScore(cls, 'medium'),
+          getBestScore(cls, 'hard')
+        );
+        return best > 0 ? (`${CLASS_SHORT[cls]}: ${best}`) : null;
+      }).filter(Boolean);
+
+      if(parts.length){
+        bestScoreBox.innerHTML = '<div class="best-score">🏅 Rekor Tertinggi (1P) — ' + parts.join(' &nbsp;|&nbsp; ') + '</div>';
       } else {
-        bestScoreBox.innerHTML = `
-          <div class="best-score" style="opacity:0.85;">
-            🏅 Belum ada rekor untuk ${CLASS_TITLES[currentClass]} — Ayo balapan!
-          </div>`;
+        bestScoreBox.innerHTML = '';
       }
     }catch(e){ bestScoreBox.innerHTML = ''; }
   }
@@ -1068,8 +1073,8 @@
           if(gameMode === '1p'){
             if(cpuTimer) clearInterval(cpuTimer);
             let cpuInterval = 1250;
-            if(currentDifficulty === 'easy') cpuInterval = 1400;
-            else if(currentDifficulty === 'hard') cpuInterval = 1100;
+            if(selectedDifficulty === 'easy') cpuInterval = 1400;
+            else if(selectedDifficulty === 'hard') cpuInterval = 1100;
             cpuTimer = setInterval(moveCpus, cpuInterval);
           }
         }, 800);
@@ -1081,8 +1086,9 @@
   function startRace(mode, cls, diff){
     AudioController.playClick();
     gameMode = mode;
-    currentClass = cls || currentClass;
-    currentDifficulty = diff || currentDifficulty;
+    selectedMode = mode;
+    selectedClass = cls || selectedClass;
+    selectedDifficulty = diff || selectedDifficulty;
     
     // Reset state
     raceOver = false;
@@ -1096,7 +1102,7 @@
     carP2.style.left = '0%';
     carCPU2.style.left = '0%';
     
-    levelValue.textContent = `${CLASS_TITLES[currentClass]} • ${DIFF_TITLES[currentDifficulty]}`;
+    levelValue.textContent = `${CLASS_SHORT[selectedClass]} • ${DIFF_TITLES[selectedDifficulty]}`;
     
     if(gameMode === '1p'){
       p1Name = "Kamu";
@@ -1149,11 +1155,11 @@
       if(winner === 'p1'){
         endEmoji.textContent = '🏆';
         endTitle.textContent = 'Kamu Menang!';
-        endSubtitle.textContent = `Kerja bagus di ${CLASS_TITLES[currentClass]} (${DIFF_TITLES[currentDifficulty]})!`;
+        endSubtitle.textContent = `Kerja bagus di ${CLASS_SHORT[selectedClass]} (${DIFF_TITLES[selectedDifficulty]})!`;
         AudioController.playWin();
         triggerConfetti();
-        const best = getBestScore(currentClass, currentDifficulty);
-        if(state.p1.score > best) setBestScore(currentClass, currentDifficulty, state.p1.score);
+        const best = getBestScore(selectedClass, selectedDifficulty);
+        if(state.p1.score > best) setBestScore(selectedClass, selectedDifficulty, state.p1.score);
       } else {
         endEmoji.textContent = '💪';
         endTitle.textContent = 'Hampir Menang!';
@@ -1204,57 +1210,97 @@
       screens[key].classList.toggle('active', key === name);
     });
     if(name === 'start'){
-      updateDifficultySubtitles();
       renderBestScores();
     }
   }
 
+  function openDifficultyScreen(mode, cls){
+    selectedMode = mode;
+    selectedClass = cls;
+
+    // Update Badge
+    diffClassBadge.className = `class-badge ${cls}`;
+    diffClassBadge.textContent = CLASS_TITLES[cls] || 'Kelas';
+
+    // Update Subtitle
+    diffSubtitle.textContent = mode === '1p' ? 'Mode: 1 Pemain vs CPU' : 'Mode: 2 Pemain Lokal';
+
+    // Update Descriptions
+    const subs = DIFF_SUBTITLES[cls] || DIFF_SUBTITLES.k1;
+    diffDescEasy.textContent = subs.easy;
+    diffDescMedium.textContent = subs.medium;
+    diffDescHard.textContent = subs.hard;
+
+    // Render best score for this class
+    if(mode === '1p'){
+      const bE = getBestScore(cls, 'easy');
+      const bM = getBestScore(cls, 'medium');
+      const bH = getBestScore(cls, 'hard');
+      if(bE > 0 || bM > 0 || bH > 0){
+        diffBestScoreBox.innerHTML = `
+          <div class="best-score" style="font-size:0.9rem; padding:6px 14px;">
+            🏅 Rekor (1P) — 🟢 Mudah: ${bE} &nbsp;|&nbsp; 🟡 Sedang: ${bM} &nbsp;|&nbsp; 🔴 Sulit: ${bH}
+          </div>`;
+      } else {
+        diffBestScoreBox.innerHTML = '';
+      }
+    } else {
+      diffBestScoreBox.innerHTML = '';
+    }
+
+    showScreen('difficulty');
+  }
+
   // ---------- Init Events ----------
-  // Class Tabs
-  document.querySelectorAll('.class-tab-btn').forEach(btn => {
+  // Start screen class selection buttons
+  document.querySelectorAll('.mode-col .level-btn').forEach(btn => {
     btn.addEventListener('click', function(){
       AudioController.init();
       AudioController.playClick();
-      document.querySelectorAll('.class-tab-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      currentClass = btn.getAttribute('data-class');
-      updateDifficultySubtitles();
-      renderBestScores();
+      const mode = btn.getAttribute('data-mode');
+      const cls = btn.getAttribute('data-class');
+      openDifficultyScreen(mode, cls);
     });
   });
 
-  // Level / Difficulty Buttons
-  document.querySelectorAll('.level-btn').forEach(btn => {
+  // Difficulty screen selection buttons
+  document.querySelectorAll('.diff-btn').forEach(btn => {
     btn.addEventListener('click', function(){
       AudioController.init();
-      const mode = btn.getAttribute('data-mode');
       const diff = btn.getAttribute('data-difficulty');
-      if (mode === '2p') {
+      selectedDifficulty = diff;
+      if (selectedMode === '2p') {
         pendingDifficulty = diff;
         document.getElementById('inputNameP1').value = '';
         document.getElementById('inputNameP2').value = '';
         showScreen('name');
       } else {
-        startRace(mode, currentClass, diff);
+        startRace('1p', selectedClass, diff);
       }
     });
+  });
+
+  // Cancel / Back Buttons
+  document.getElementById('cancelDifficultyBtn').addEventListener('click', function(){
+    AudioController.playClick();
+    showScreen('start');
+  });
+
+  document.getElementById('cancelNameBtn').addEventListener('click', function(){
+    AudioController.playClick();
+    showScreen('difficulty');
   });
   
   document.getElementById('start2PBtn').addEventListener('click', function(){
     AudioController.playClick();
     p1Name = document.getElementById('inputNameP1').value.trim() || 'Pembalap Kiri';
     p2Name = document.getElementById('inputNameP2').value.trim() || 'Pembalap Kanan';
-    startRace('2p', currentClass, pendingDifficulty);
-  });
-  
-  document.getElementById('cancelNameBtn').addEventListener('click', function(){
-    AudioController.playClick();
-    showScreen('start');
+    startRace('2p', selectedClass, pendingDifficulty);
   });
   
   document.getElementById('playAgainBtn').addEventListener('click', function(){
     AudioController.playClick();
-    startRace(gameMode, currentClass, currentDifficulty);
+    startRace(selectedMode, selectedClass, selectedDifficulty);
   });
   
   document.getElementById('changeLevelBtn').addEventListener('click', function(){
@@ -1264,6 +1310,5 @@
   });
 
   // Init
-  updateDifficultySubtitles();
   renderBestScores();
 })();
