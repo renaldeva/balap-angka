@@ -807,8 +807,8 @@
 
   // ---------- Question Dispatcher ----------
   function generateQuestion(cls, diff){
-    cls = cls || currentClass;
-    diff = diff || currentDifficulty;
+    cls = cls || selectedClass;
+    diff = diff || selectedDifficulty;
     if(cls === 'k1') return generateQuestionK1(diff);
     if(cls === 'k2') return generateQuestionK2(diff);
     if(cls === 'k3') return generateQuestionK3(diff);
@@ -857,7 +857,7 @@
     const playerState = state[playerKey];
     playerState.isAnswering = false;
     
-    const q = generateQuestion(currentClass, currentDifficulty);
+    const q = generateQuestion(selectedClass, selectedDifficulty);
     playerState.answer = q.answer;
     playerState.answerDisplay = q.answerDisplay || (q.html ? q.text : String(q.answer));
     
@@ -963,8 +963,8 @@
     if(raceOver || isCountdown) return;
     if(gameMode === '1p'){
       let minMove = 2, maxMove = 5;
-      if(currentDifficulty === 'easy'){ minMove = 2; maxMove = 4; }
-      else if(currentDifficulty === 'hard'){ minMove = 3; maxMove = 5; }
+      if(selectedDifficulty === 'easy'){ minMove = 2; maxMove = 4; }
+      else if(selectedDifficulty === 'hard'){ minMove = 3; maxMove = 5; }
       moveRacer('cpu1', randInt(minMove, maxMove));
       moveRacer('cpu2', randInt(minMove, maxMove));
     }
