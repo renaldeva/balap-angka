@@ -1,7 +1,11 @@
 # Balap Angka - Game Matematika untuk SD
 
 Game balap edukasi: pemain menjawab soal matematika untuk membuat mobilnya melaju
-lebih cepat daripada dua mobil CPU. Tersedia 3 level (Kelas 1-2, 3-4, 5-6).
+lebih cepat daripada dua mobil CPU. Tersedia 4 level materi:
+- **Level 1 (Kelas 1 SD)**: Bilangan cacah 0-100, penjumlahan & pengurangan dasar (maks 20), operasi 2 digit tanpa simpan/pinjam, dan nilai tempat (puluhan & satuan).
+- **Level 2 (Kelas 2 SD)**: Bilangan cacah 0-999, penjumlahan teknik menyimpan, pengurangan teknik meminjam, perkalian dasar 1-5 (maks 50 & penjumlahan berulang), serta pembagian dasar habis dibagi 1-5.
+- **Level 3 (Kelas 3 SD)**: Bilangan cacah 0-9.999, perkalian komplit 1-10, perkalian 2 digit × 1 digit bersusun, pembagian porogapit 2 digit ÷ 1 digit tanpa sisa, serta pecahan sederhana berpenyebut sama.
+- **Level 4 (Campuran 1-3)**: Kombinasi acak seluruh materi dari Kelas 1, 2, dan 3 SD.
 
 Project ini hanya berisi satu file statis (`index.html`), tanpa build step,
 sehingga bisa langsung di-deploy ke Vercel.

@@ -164,6 +164,14 @@ h1, h2, h3 { font-family: 'Baloo 2', cursive; margin: 0; }
 .level-btn.easy { background: var(--green-ok); }
 .level-btn.medium { background: #4FA8D8; }
 .level-btn.hard { background: var(--coral); }
+.level-btn.lvl-k1 { background: #388E3C; box-shadow: 0 6px 0 #1B5E20; }
+.level-btn.lvl-k2 { background: #E68A00; box-shadow: 0 6px 0 #9E5E00; }
+.level-btn.lvl-k3 { background: #E53935; box-shadow: 0 6px 0 #9E1B1B; }
+.level-btn.lvl-k4 { background: #7C3AED; box-shadow: 0 6px 0 #5B21B6; }
+.level-btn.lvl-k1:active { box-shadow: 0 2px 0 #1B5E20; }
+.level-btn.lvl-k2:active { box-shadow: 0 2px 0 #9E5E00; }
+.level-btn.lvl-k3:active { box-shadow: 0 2px 0 #9E1B1B; }
+.level-btn.lvl-k4:active { box-shadow: 0 2px 0 #5B21B6; }
 .level-btn small { display: block; font-family: 'Nunito', sans-serif; font-weight: 700; font-size: 0.75rem; opacity: 0.9; margin-top: 2px;}
 
 .best-score {
@@ -320,10 +328,36 @@ h1, h2, h3 { font-family: 'Baloo 2', cursive; margin: 0; }
 
 .question-text {
   font-family: 'Baloo 2', cursive;
-  font-size: clamp(1.6rem, 5vw, 2.2rem);
+  font-size: clamp(1.4rem, 4.5vw, 2.1rem);
   color: var(--ink);
   margin-bottom: 12px;
+  min-height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.25;
 }
+
+/* Stacked Fractions */
+.frac {
+  display: inline-flex;
+  flex-direction: column;
+  vertical-align: middle;
+  text-align: center;
+  margin: 0 4px;
+  font-size: 0.9em;
+  line-height: 1;
+}
+.frac .top {
+  border-bottom: 2.5px solid currentColor;
+  padding-bottom: 2px;
+  font-weight: 800;
+}
+.frac .bottom {
+  padding-top: 2px;
+  font-weight: 800;
+}
+
 .answers-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -334,7 +368,8 @@ h1, h2, h3 { font-family: 'Baloo 2', cursive; margin: 0; }
   font-family: 'Baloo 2', cursive;
   font-size: 1.3rem;
   font-weight: 700;
-  padding: 12px 10px;
+  padding: 10px 8px;
+  min-height: 64px;
   border-radius: 16px;
   border: none;
   background: #EAF6FF;
@@ -345,6 +380,7 @@ h1, h2, h3 { font-family: 'Baloo 2', cursive; margin: 0; }
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   line-height: 1.1;
 }
 .answer-btn .key-label {
