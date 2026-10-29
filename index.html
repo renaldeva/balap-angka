@@ -24,21 +24,41 @@
       <h1>BALAP ANGKA</h1>
       <div class="subtitle">Jawab soal matematika, menangkan balapannya!</div>
 
+      <!-- Class Selection Tabs -->
+      <div class="class-tabs-wrap">
+        <div class="class-tabs-title">Pilih Kelas:</div>
+        <div class="class-tabs" id="classTabs">
+          <button class="class-tab-btn active" data-class="k1">
+            <span class="tab-emoji">🟢</span>
+            <span class="tab-label">Kelas 1 SD</span>
+          </button>
+          <button class="class-tab-btn" data-class="k2">
+            <span class="tab-emoji">🟡</span>
+            <span class="tab-label">Kelas 2 SD</span>
+          </button>
+          <button class="class-tab-btn" data-class="k3">
+            <span class="tab-emoji">🔴</span>
+            <span class="tab-label">Kelas 3 SD</span>
+          </button>
+          <button class="class-tab-btn" data-class="k4">
+            <span class="tab-emoji">🟣</span>
+            <span class="tab-label">Campuran 1-3</span>
+          </button>
+        </div>
+      </div>
+
       <div class="mode-select-grid">
         <div class="mode-col">
           <h3>1 Pemain vs CPU</h3>
           <div class="level-select">
-            <button class="level-btn lvl-k1" data-level="k1" data-mode="1p">
-              <span>🟢 Kelas 1 SD<br><small>Hitung 0-100 & nilai tempat</small></span>
+            <button class="level-btn easy" data-difficulty="easy" data-mode="1p">
+              <span>🟢 Mudah<br><small id="sub-1p-easy">Hitung 1-10 & nilai tempat</small></span>
             </button>
-            <button class="level-btn lvl-k2" data-level="k2" data-mode="1p">
-              <span>🟡 Kelas 2 SD<br><small>Simpan/pinjam, kali/bagi 1-5</small></span>
+            <button class="level-btn medium" data-difficulty="medium" data-mode="1p">
+              <span>🟡 Sedang<br><small id="sub-1p-medium">Hitung s.d 20 & nilai tempat</small></span>
             </button>
-            <button class="level-btn lvl-k3" data-level="k3" data-mode="1p">
-              <span>🔴 Kelas 3 SD<br><small>Kali 1-10, bersusun & pecahan</small></span>
-            </button>
-            <button class="level-btn lvl-k4" data-level="k4" data-mode="1p">
-              <span>🟣 Campuran (1-3)<br><small>Semua materi Kelas 1, 2, 3</small></span>
+            <button class="level-btn hard" data-difficulty="hard" data-mode="1p">
+              <span>🔴 Sulit<br><small id="sub-1p-hard">Operasi 2 digit tanpa simpan/pinjam</small></span>
             </button>
           </div>
         </div>
@@ -46,17 +66,14 @@
         <div class="mode-col">
           <h3>2 Pemain Lokal</h3>
           <div class="level-select">
-            <button class="level-btn lvl-k1" data-level="k1" data-mode="2p">
-              <span>🟢 Kelas 1 SD<br><small>P1(Q/W/A/S) vs P2(Panah) • Kls 1</small></span>
+            <button class="level-btn easy" data-difficulty="easy" data-mode="2p">
+              <span>🟢 Mudah<br><small>P1(Q/W/A/S) vs P2(Panah) • Mudah</small></span>
             </button>
-            <button class="level-btn lvl-k2" data-level="k2" data-mode="2p">
-              <span>🟡 Kelas 2 SD<br><small>P1(Q/W/A/S) vs P2(Panah) • Kls 2</small></span>
+            <button class="level-btn medium" data-difficulty="medium" data-mode="2p">
+              <span>🟡 Sedang<br><small>P1(Q/W/A/S) vs P2(Panah) • Sedang</small></span>
             </button>
-            <button class="level-btn lvl-k3" data-level="k3" data-mode="2p">
-              <span>🔴 Kelas 3 SD<br><small>P1(Q/W/A/S) vs P2(Panah) • Kls 3</small></span>
-            </button>
-            <button class="level-btn lvl-k4" data-level="k4" data-mode="2p">
-              <span>🟣 Campuran (1-3)<br><small>P1(Q/W/A/S) vs P2(Panah) • Gabungan</small></span>
+            <button class="level-btn hard" data-difficulty="hard" data-mode="2p">
+              <span>🔴 Sulit<br><small>P1(Q/W/A/S) vs P2(Panah) • Sulit</small></span>
             </button>
           </div>
         </div>

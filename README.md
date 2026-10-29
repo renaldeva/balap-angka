@@ -1,11 +1,22 @@
 # Balap Angka - Game Matematika untuk SD
 
 Game balap edukasi: pemain menjawab soal matematika untuk membuat mobilnya melaju
-lebih cepat daripada dua mobil CPU. Tersedia 4 level materi:
-- **Level 1 (Kelas 1 SD)**: Bilangan cacah 0-100, penjumlahan & pengurangan dasar (maks 20), operasi 2 digit tanpa simpan/pinjam, dan nilai tempat (puluhan & satuan).
-- **Level 2 (Kelas 2 SD)**: Bilangan cacah 0-999, penjumlahan teknik menyimpan, pengurangan teknik meminjam, perkalian dasar 1-5 (maks 50 & penjumlahan berulang), serta pembagian dasar habis dibagi 1-5.
-- **Level 3 (Kelas 3 SD)**: Bilangan cacah 0-9.999, perkalian komplit 1-10, perkalian 2 digit × 1 digit bersusun, pembagian porogapit 2 digit ÷ 1 digit tanpa sisa, serta pecahan sederhana berpenyebut sama.
-- **Level 4 (Campuran 1-3)**: Kombinasi acak seluruh materi dari Kelas 1, 2, dan 3 SD.
+lebih cepat daripada dua mobil CPU. Tersedia pilihan kelas dengan 3 tingkat kesulitan (**Mudah**, **Sedang**, **Sulit**):
+
+- **Kelas 1 SD (0-100)**:
+  - 🟢 **Mudah**: Hitung dasar 1-10 & pengenalan nilai tempat (puluhan/satuan).
+  - 🟡 **Sedang**: Penjumlahan & pengurangan hasil s.d. 20 & dekomposisi nilai tempat.
+  - 🔴 **Sulit**: Operasi hitung 2 digit tanpa menyimpan/meminjam (langsung per kolom).
+- **Kelas 2 SD (0-999)**:
+  - 🟢 **Mudah**: Simpan/pinjam 2 digit dasar & perkalian/pembagian angka 2.
+  - 🟡 **Sedang**: Perkalian & pembagian dasar 1-5 (maks 50) serta simpan/pinjam menengah.
+  - 🔴 **Sulit**: Penjumlahan simpan & pengurangan pinjam 3 digit (ratusan).
+- **Kelas 3 SD (0-9.999)**:
+  - 🟢 **Mudah**: Otomatisasi perkalian komplit 1-10 (fokus tabel 6-10).
+  - 🟡 **Sedang**: Perkalian bersusun 2 digit × 1 digit & pembagian porogapit tanpa sisa.
+  - 🔴 **Sulit**: Operasi hitung pecahan sederhana berpenyebut sama (+ dan -).
+- **Campuran 1-3**:
+  - Tantangan gabungan materi Kelas 1, 2, dan 3 sesuai tingkat kesulitan (Mudah, Sedang, Sulit).
 
 Project ini hanya berisi satu file statis (`index.html`), tanpa build step,
 sehingga bisa langsung di-deploy ke Vercel.

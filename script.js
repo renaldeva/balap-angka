@@ -106,12 +106,13 @@
 
   // ---------- State ----------
   let gameMode = '1p'; // '1p' or '2p'
-  let level = null;
+  let currentClass = 'k1'; // 'k1', 'k2', 'k3', 'k4'
+  let currentDifficulty = 'easy'; // 'easy', 'medium', 'hard'
   let raceOver = true;
   let isCountdown = false;
   let p1Name = "Kamu";
   let p2Name = "Pemain 2";
-  let pendingLevel = null;
+  let pendingDifficulty = 'easy';
   
   const state = {
     p1: { pos:0, score:0, streak:0, answer:null, isAnswering:false, bestStreak:0 },
@@ -122,16 +123,52 @@
 
   let cpuTimer = null;
   const FINISH = 100;
-  const LEVEL_LABELS = {
+
+  const CLASS_TITLES = {
     k1: 'Kelas 1 SD',
     k2: 'Kelas 2 SD',
     k3: 'Kelas 3 SD',
-    k4: 'Campuran 1-3',
-    // Fallback aliases
-    easy: 'Kelas 1 SD',
-    medium: 'Kelas 2 SD',
-    hard: 'Kelas 3 SD'
+    k4: 'Campuran 1-3'
   };
+
+  const DIFF_TITLES = {
+    easy: 'Mudah',
+    medium: 'Sedang',
+    hard: 'Sulit'
+  };
+
+  const DIFF_SUBTITLES = {
+    k1: {
+      easy: 'Hitung 1-10 & nilai tempat',
+      medium: 'Hitung s.d 20 & nilai tempat',
+      hard: 'Operasi 2 digit tanpa simpan/pinjam'
+    },
+    k2: {
+      easy: 'Simpan/pinjam 2 digit & kali/bagi 2',
+      medium: 'Kali & bagi 1-5 (maks 50)',
+      hard: 'Simpan/pinjam 3 digit (ratusan)'
+    },
+    k3: {
+      easy: 'Otomatisasi perkalian 1-10',
+      medium: 'Perkalian bersusun & porogapit 2 digit',
+      hard: 'Pecahan sederhana (penyebut sama)'
+    },
+    k4: {
+      easy: 'Soal mudah Kelas 1, 2, dan 3',
+      medium: 'Soal sedang Kelas 1, 2, dan 3',
+      hard: 'Soal sulit Kelas 1, 2, dan 3'
+    }
+  };
+
+  function updateDifficultySubtitles(){
+    const subs = DIFF_SUBTITLES[currentClass] || DIFF_SUBTITLES.k1;
+    const sEasy = document.getElementById('sub-1p-easy');
+    const sMed = document.getElementById('sub-1p-medium');
+    const sHard = document.getElementById('sub-1p-hard');
+    if(sEasy) sEasy.textContent = subs.easy;
+    if(sMed) sMed.textContent = subs.medium;
+    if(sHard) sHard.textContent = subs.hard;
+  }
 
   // Controls map for 2P mode
   // P1 uses Q W A S
@@ -190,27 +227,33 @@
   const countdownText = document.getElementById('countdownText');
 
 
-  // ---------- Storage (best score per level for 1P) ----------
-  function getBestScore(lvl){
+  // ---------- Storage (best score per class and difficulty for 1P) ----------
+  function getBestScore(cls, diff){
     try{
-      const raw = localStorage.getItem('balapAngka_best_' + lvl);
+      const raw = localStorage.getItem(`balapAngka_best_${cls}_${diff}`);
       return raw ? parseInt(raw,10) : 0;
     }catch(e){ return 0; }
   }
-  function setBestScore(lvl, val){
-    try{ localStorage.setItem('balapAngka_best_' + lvl, String(val)); }catch(e){}
+  function setBestScore(cls, diff, val){
+    try{ localStorage.setItem(`balapAngka_best_${cls}_${diff}`, String(val)); }catch(e){}
   }
   function renderBestScores(){
     try{
-      const parts = ['k1','k2','k3','k4'].map(lvl => {
-        const b = getBestScore(lvl);
-        return b > 0 ? (LEVEL_LABELS[lvl] + ': ' + b) : null;
-      }).filter(Boolean);
-      
-      if(parts.length){
-        bestScoreBox.innerHTML = '<div class="best-score">🏅 Rekor (1P) — ' + parts.join(' &nbsp;|&nbsp; ') + '</div>';
+      const bE = getBestScore(currentClass, 'easy');
+      const bM = getBestScore(currentClass, 'medium');
+      const bH = getBestScore(currentClass, 'hard');
+      const hasAny = bE > 0 || bM > 0 || bH > 0;
+      if(hasAny){
+        bestScoreBox.innerHTML = `
+          <div class="best-score">
+            🏅 Rekor (1P) ${CLASS_TITLES[currentClass]} — 
+            🟢 Mudah: ${bE} &nbsp;|&nbsp; 🟡 Sedang: ${bM} &nbsp;|&nbsp; 🔴 Sulit: ${bH}
+          </div>`;
       } else {
-        bestScoreBox.innerHTML = '';
+        bestScoreBox.innerHTML = `
+          <div class="best-score" style="opacity:0.85;">
+            🏅 Belum ada rekor untuk ${CLASS_TITLES[currentClass]} — Ayo balapan!
+          </div>`;
       }
     }catch(e){ bestScoreBox.innerHTML = ''; }
   }
@@ -345,41 +388,112 @@
     return shuffle(list.map(c => normalizeChoice(c)));
   }
 
-  // ---------- KELAS 1 SD ----------
+  // ---------- KELAS 1 SD (Mudah, Sedang, Sulit) ----------
   // - Bilangan cacah 0 - 100
   // - Penjumlahan & pengurangan dasar (hasil maksimal 20)
   // - Penjumlahan & pengurangan dua digit (tanpa menyimpan/meminjam)
   // - Logika nilai tempat (puluhan & satuan)
-  function generateQuestionK1(){
-    const subType = randInt(1, 3);
-    
-    // Subtype 1: Penjumlahan & Pengurangan Dasar (hasil maksimal 20)
-    if(subType === 1){
-      const isAdd = Math.random() < 0.5;
-      if(isAdd){
-        const a = randInt(1, 14);
-        const b = randInt(1, 20 - a);
-        const ans = a + b;
-        return {
-          text: `${a} + ${b} = ?`,
-          answer: ans,
-          choices: generateNumberChoices(ans, 0, 1, 20)
-        };
+  function generateQuestionK1(diff){
+    if(diff === 'easy'){
+      // MUDAH:
+      // 50% hitung dasar kecil hasil <= 10
+      // 50% tebak nilai tempat langsung
+      if(Math.random() < 0.5){
+        const isAdd = Math.random() < 0.5;
+        if(isAdd){
+          const a = randInt(1, 8);
+          const b = randInt(1, 10 - a);
+          const ans = a + b;
+          return {
+            text: `${a} + ${b} = ?`,
+            answer: ans,
+            choices: generateNumberChoices(ans, 0, 1, 10)
+          };
+        } else {
+          const a = randInt(2, 10);
+          const b = randInt(1, a - 1);
+          const ans = a - b;
+          return {
+            text: `${a} - ${b} = ?`,
+            answer: ans,
+            choices: generateNumberChoices(ans, 0, 1, 10)
+          };
+        }
       } else {
-        const a = randInt(4, 20);
-        const b = randInt(1, a - 1);
-        const ans = a - b;
-        return {
-          text: `${a} - ${b} = ?`,
-          answer: ans,
-          choices: generateNumberChoices(ans, 0, 1, 20)
-        };
+        const p = randInt(1, 9);
+        let s = randInt(0, 9);
+        if(s === p) s = (p % 9) + 1;
+        const num = p * 10 + s;
+        const askTens = Math.random() < 0.5;
+        if(askTens){
+          return {
+            text: `Angka puluhan dari ${num} adalah?`,
+            answer: p,
+            choices: makeUniqueChoices(p, [s, p * 10, num], () => randInt(1, 9))
+          };
+        } else {
+          return {
+            text: `Angka satuan dari ${num} adalah?`,
+            answer: s,
+            choices: makeUniqueChoices(s, [p, s * 10, num], () => randInt(0, 9))
+          };
+        }
       }
-    }
-
-    // Subtype 2: Penjumlahan & Pengurangan Dua Digit (Tanpa Menyimpan/Meminjam, 0-100)
-    if(subType === 2){
-      const isAdd = Math.random() < 0.5;
+    } else if(diff === 'medium'){
+      // SEDANG:
+      // 50% hitung dasar hasil maksimal 20 (contoh: 8 + 7 = 15; 19 - 6 = 13)
+      // 50% dekomposisi nilai tempat (57 = ... puluhan + 7 satuan)
+      if(Math.random() < 0.5){
+        const isAdd = Math.random() < 0.5;
+        if(isAdd){
+          const a = randInt(1, 14);
+          const b = randInt(1, 20 - a);
+          const ans = a + b;
+          return {
+            text: `${a} + ${b} = ?`,
+            answer: ans,
+            choices: generateNumberChoices(ans, 0, 1, 20)
+          };
+        } else {
+          const a = randInt(4, 20);
+          const b = randInt(1, a - 1);
+          const ans = a - b;
+          return {
+            text: `${a} - ${b} = ?`,
+            answer: ans,
+            choices: generateNumberChoices(ans, 0, 1, 20)
+          };
+        }
+      } else {
+        const p = randInt(1, 9);
+        let s = randInt(0, 9);
+        if(s === p) s = (p % 9) + 1;
+        const num = p * 10 + s;
+        const v = randInt(1, 3);
+        if(v === 1){
+          return {
+            text: `Angka ${num} = ... puluhan + ${s} satuan`,
+            answer: p,
+            choices: makeUniqueChoices(p, [s, p * 10, (p + 1) % 10 || 1], () => randInt(1, 9))
+          };
+        } else if(v === 2){
+          return {
+            text: `Angka ${num} = ${p} puluhan + ... satuan`,
+            answer: s,
+            choices: makeUniqueChoices(s, [p, s * 10, (s + 2) % 10], () => randInt(0, 9))
+          };
+        } else {
+          return {
+            text: `${p} puluhan + ${s} satuan = ?`,
+            answer: num,
+            choices: makeUniqueChoices(num, [s * 10 + p, p * 10, s * 10 || (num + 10)], () => randInt(11, 99))
+          };
+        }
+      }
+    } else {
+      // SULIT:
+      // Operasi dua digit tanpa menyimpan/meminjam (0 - 100, contoh: 23 + 14 = 37; 45 - 12 = 33)
+      const isAdd = Math.random() < 0.55;
       if(isAdd){
         const p1 = randInt(1, 7);
         const p2 = randInt(1, 9 - p1);
@@ -408,152 +522,188 @@
         };
       }
     }
-
-    // Subtype 3: Logika Nilai Tempat
-    // Contoh: Angka 57 terdiri dari 5 puluhan dan 7 satuan
-    const p = randInt(1, 9);
-    let s = randInt(0, 9);
-    if(s === p) s = (p % 9) + 1;
-    const num = p * 10 + s;
-    const variant = randInt(1, 5);
-
-    if(variant === 1){
-      const ans = p;
-      return {
-        text: `Angka ${num} = ... puluhan + ${s} satuan`,
-        answer: ans,
-        choices: makeUniqueChoices(ans, [s, p * 10, (p + 1) % 10 || 1], () => randInt(1, 9))
-      };
-    } else if(variant === 2){
-      const ans = s;
-      return {
-        text: `Angka ${num} = ${p} puluhan + ... satuan`,
-        answer: ans,
-        choices: makeUniqueChoices(ans, [p, s * 10, (s + 2) % 10], () => randInt(0, 9))
-      };
-    } else if(variant === 3){
-      const ans = num;
-      const reversed = s * 10 + p;
-      return {
-        text: `${p} puluhan + ${s} satuan = ?`,
-        answer: ans,
-        choices: makeUniqueChoices(ans, [reversed, p * 10, s * 10 || (num + 10)], () => randInt(11, 99))
-      };
-    } else if(variant === 4){
-      const ans = p;
-      return {
-        text: `Angka puluhan dari ${num} adalah?`,
-        answer: ans,
-        choices: makeUniqueChoices(ans, [s, p * 10, num], () => randInt(1, 9))
-      };
-    } else {
-      const ans = s;
-      return {
-        text: `Angka satuan dari ${num} adalah?`,
-        answer: ans,
-        choices: makeUniqueChoices(ans, [p, s * 10, num], () => randInt(0, 9))
-      };
-    }
   }
 
-  // ---------- KELAS 2 SD ----------
+  // ---------- KELAS 2 SD (Mudah, Sedang, Sulit) ----------
   // - Bilangan cacah 0 - 999
   // - Penjumlahan teknik menyimpan (hasil satuan > 9)
   // - Pengurangan teknik meminjam (satuan atas < bawah)
   // - Perkalian dasar 1 - 5 (hasil maksimal 50, konsep penjumlahan berulang)
   // - Pembagian dasar habis dibagi 1 - 5
-  function generateQuestionK2(){
-    const subType = randInt(1, 4);
-
-    // Subtype 1: Penjumlahan dengan Teknik Menyimpan
-    if(subType === 1){
-      const s1 = randInt(2, 9);
-      const s2 = randInt(10 - s1, 9); // s1 + s2 >= 10
-      const is3Digit = Math.random() < 0.5;
-      let a, b;
-      if(!is3Digit){
-        const p1 = randInt(1, 7);
-        const p2 = randInt(0, 8 - p1);
-        a = p1 * 10 + s1;
-        b = p2 * 10 + s2;
+  function generateQuestionK2(diff){
+    if(diff === 'easy'){
+      // MUDAH:
+      // 50% simpan/pinjam 2 digit dasar (angka kecil <= 45)
+      // 25% perkalian 1 & 2 (konsep penjumlahan berulang)
+      // 25% pembagian dasar 2 & 3
+      const r = Math.random();
+      if(r < 0.5){
+        const isAdd = Math.random() < 0.5;
+        if(isAdd){
+          const s1 = randInt(2, 9);
+          const s2 = randInt(10 - s1, 9);
+          const a = randInt(1, 3) * 10 + s1;
+          const b = randInt(0, 2) * 10 + s2;
+          const ans = a + b;
+          return {
+            text: `${a} + ${b} = ?`,
+            answer: ans,
+            choices: generateNumberChoices(ans, 10, 1, 70)
+          };
+        } else {
+          const s2 = randInt(3, 9);
+          const s1 = randInt(0, s2 - 1);
+          const a = randInt(2, 5) * 10 + s1;
+          const b = randInt(0, Math.floor(a/10) - 1) * 10 + s2;
+          const ans = a - b;
+          return {
+            text: `${a} - ${b} = ?`,
+            answer: ans,
+            choices: generateNumberChoices(ans, 0, 1, 60)
+          };
+        }
+      } else if(r < 0.75){
+        const a = randInt(1, 2);
+        const b = randInt(1, 10);
+        const ans = a * b;
+        const text = a > 1 && Math.random() < 0.5
+          ? `${a} × ${b} = ${Array(a).fill(b).join(' + ')} = ?`
+          : `${a} × ${b} = ?`;
+        return {
+          text: text,
+          answer: ans,
+          choices: generateNumberChoices(ans, 1, 1, 25)
+        };
       } else {
-        const h1 = randInt(1, 6);
-        const p1 = randInt(0, 8);
-        a = h1 * 100 + p1 * 10 + s1;
-        b = randInt(1, 24) * 10 + s2;
+        const b = randInt(2, 3);
+        const q = randInt(1, 8);
+        const a = b * q;
+        return {
+          text: `${a} ÷ ${b} = ?`,
+          answer: q,
+          choices: generateNumberChoices(q, 1, 1, 10)
+        };
       }
-      const ans = a + b;
-      return {
-        text: `${a} + ${b} = ?`,
-        answer: ans,
-        choices: generateNumberChoices(ans, 10, 1, 999)
-      };
-    }
-
-    // Subtype 2: Pengurangan dengan Teknik Meminjam
-    if(subType === 2){
-      const s2 = randInt(3, 9);
-      const s1 = randInt(0, s2 - 1); // satuan atas < bawah
-      const is3Digit = Math.random() < 0.5;
-      let a, b;
-      if(!is3Digit){
-        const p1 = randInt(2, 9);
-        const p2 = randInt(0, p1 - 1);
-        a = p1 * 10 + s1;
-        b = p2 * 10 + s2;
+    } else if(diff === 'medium'){
+      // SEDANG:
+      // 30% simpan/pinjam 2 digit lebih variatif (hasil s.d. 100)
+      // 40% perkalian 1-5 (hasil maksimal 50, konsep berulang)
+      // 30% pembagian dasar habis dibagi 1-5
+      const r = Math.random();
+      if(r < 0.3){
+        const isAdd = Math.random() < 0.5;
+        if(isAdd){
+          const s1 = randInt(2, 9);
+          const s2 = randInt(10 - s1, 9);
+          const a = randInt(2, 6) * 10 + s1;
+          const b = randInt(1, 8 - Math.floor(a/10)) * 10 + s2;
+          const ans = a + b;
+          return {
+            text: `${a} + ${b} = ?`,
+            answer: ans,
+            choices: generateNumberChoices(ans, 10, 1, 100)
+          };
+        } else {
+          const s2 = randInt(3, 9);
+          const s1 = randInt(0, s2 - 1);
+          const a = randInt(4, 9) * 10 + s1;
+          const b = randInt(1, Math.floor(a/10) - 1) * 10 + s2;
+          const ans = a - b;
+          return {
+            text: `${a} - ${b} = ?`,
+            answer: ans,
+            choices: generateNumberChoices(ans, 0, 1, 100)
+          };
+        }
+      } else if(r < 0.7){
+        const a = randInt(1, 5);
+        const b = randInt(1, 10);
+        const ans = a * b;
+        const text = a > 1 && Math.random() < 0.35
+          ? `${a} × ${b} = ${Array(a).fill(b).join(' + ')} = ?`
+          : `${a} × ${b} = ?`;
+        return {
+          text: text,
+          answer: ans,
+          choices: generateNumberChoices(ans, 1, 1, 50)
+        };
       } else {
-        a = randInt(12, 75) * 10 + s1;
-        const maxTensB = Math.min(25, Math.floor(a / 10) - 2);
-        b = randInt(1, Math.max(1, maxTensB)) * 10 + s2;
+        const b = randInt(2, 5);
+        const q = randInt(1, 10);
+        const a = b * q;
+        return {
+          text: `${a} ÷ ${b} = ?`,
+          answer: q,
+          choices: generateNumberChoices(q, 1, 1, 10)
+        };
       }
-      const ans = a - b;
-      return {
-        text: `${a} - ${b} = ?`,
-        answer: ans,
-        choices: generateNumberChoices(ans, 0, 1, 999)
-      };
-    }
-
-    // Subtype 3: Perkalian Dasar (1 sampai 5, hasil maksimal 50)
-    if(subType === 3){
-      const a = randInt(1, 5);
-      const b = randInt(1, 10);
-      const ans = a * b;
-      const showConcept = a > 1 && Math.random() < 0.35;
-      const text = showConcept
-        ? `${a} × ${b} = ${Array(a).fill(b).join(' + ')} = ?`
-        : `${a} × ${b} = ?`;
-      return {
-        text: text,
-        answer: ans,
-        choices: generateNumberChoices(ans, 1, 1, 50)
-      };
-    }
-
-    // Subtype 4: Pembagian Dasar (habis dibagi angka 1 sampai 5)
-    if(subType === 4){
-      const b = randInt(2, 5);
-      const q = randInt(1, 10);
-      const a = b * q;
-      return {
-        text: `${a} ÷ ${b} = ?`,
-        answer: q,
-        choices: generateNumberChoices(q, 1, 1, 10)
-      };
+    } else {
+      // SULIT:
+      // 50% simpan/pinjam ratusan 3 digit (contoh: 148 + 25 = 173; 215 - 38 = 177)
+      // 50% perkalian & pembagian 1-5 cepat
+      if(Math.random() < 0.5){
+        const isAdd = Math.random() < 0.5;
+        if(isAdd){
+          const s1 = randInt(2, 9);
+          const s2 = randInt(10 - s1, 9);
+          const h1 = randInt(1, 6);
+          const p1 = randInt(0, 8);
+          const a = h1 * 100 + p1 * 10 + s1;
+          const b = randInt(1, 24) * 10 + s2;
+          const ans = a + b;
+          return {
+            text: `${a} + ${b} = ?`,
+            answer: ans,
+            choices: generateNumberChoices(ans, 10, 1, 999)
+          };
+        } else {
+          const s2 = randInt(3, 9);
+          const s1 = randInt(0, s2 - 1);
+          const a = randInt(12, 75) * 10 + s1;
+          const maxTensB = Math.min(25, Math.floor(a / 10) - 2);
+          const b = randInt(1, Math.max(1, maxTensB)) * 10 + s2;
+          const ans = a - b;
+          return {
+            text: `${a} - ${b} = ?`,
+            answer: ans,
+            choices: generateNumberChoices(ans, 0, 1, 999)
+          };
+        }
+      } else {
+        const isMult = Math.random() < 0.5;
+        if(isMult){
+          const a = randInt(2, 5);
+          const b = randInt(4, 10);
+          const ans = a * b;
+          return {
+            text: `${a} × ${b} = ?`,
+            answer: ans,
+            choices: generateNumberChoices(ans, 1, 1, 50)
+          };
+        } else {
+          const b = randInt(2, 5);
+          const q = randInt(4, 10);
+          const a = b * q;
+          return {
+            text: `${a} ÷ ${b} = ?`,
+            answer: q,
+            choices: generateNumberChoices(q, 1, 1, 10)
+          };
+        }
+      }
     }
   }
 
-  // ---------- KELAS 3 SD ----------
+  // ---------- KELAS 3 SD (Mudah, Sedang, Sulit) ----------
   // - Bilangan cacah 0 - 9.999
   // - Perkalian komplit (1 - 10)
   // - Perkalian 2 digit dengan 1 digit (bersusun)
   // - Pembagian 2 digit dengan 1 digit tanpa sisa (porogapit sederhana)
   // - Operasi hitung pecahan sederhana (penyebut sama)
-  function generateQuestionK3(){
-    const subType = randInt(1, 4);
-
-    // Subtype 1: Perkalian Komplit (1 - 10, fokus tabel 6-10)
-    if(subType === 1){
+  function generateQuestionK3(diff){
+    if(diff === 'easy'){
+      // MUDAH:
+      // 100% Perkalian komplit (1 - 10), otomatisasi perkalian angka 1 sampai 10
       let a = randInt(6, 10);
       let b = randInt(2, 10);
       if(Math.random() < 0.5) [a, b] = [b, a];
@@ -563,82 +713,107 @@
         answer: ans,
         choices: generateNumberChoices(ans, 2, 1, 100)
       };
-    }
-
-    // Subtype 2: Perkalian 2 Digit dengan 1 Digit (Bersusun)
-    if(subType === 2){
-      const a = randInt(12, 45); // 2 digit
-      const b = randInt(2, 8);  // 1 digit
-      const ans = a * b;
-      return {
-        text: `${a} × ${b} = ?`,
-        answer: ans,
-        choices: generateNumberChoices(ans, 10, 1, 9999)
-      };
-    }
-
-    // Subtype 3: Pembagian 2 Digit dengan 1 Digit Tanpa Sisa (Porogapit Sederhana)
-    if(subType === 3){
-      const b = randInt(2, 7);
-      const maxQ = Math.floor(99 / b);
-      const minQ = 11;
-      const q = randInt(minQ, Math.max(minQ, maxQ));
-      const a = b * q; // Terjamin 2 digit tanpa sisa
-      return {
-        text: `${a} ÷ ${b} = ?`,
-        answer: q,
-        choices: generateNumberChoices(q, 10, 1, 99)
-      };
-    }
-
-    // Subtype 4: Operasi Hitung Pecahan Sederhana (Penyebut Sama)
-    if(subType === 4){
-      const d = randInt(3, 9);
-      const isAdd = Math.random() < 0.5;
-      if(isAdd){
-        const n1 = randInt(1, Math.max(1, d - 2));
-        const n2 = randInt(1, d - n1);
-        const ansN = n1 + n2;
-        const html = `<span class="frac"><span class="top">${n1}</span><span class="bottom">${d}</span></span> + <span class="frac"><span class="top">${n2}</span><span class="bottom">${d}</span></span> = ?`;
-        const text = `${n1}/${d} + ${n2}/${d} = ?`;
-        const ansVal = `${ansN}/${d}`;
+    } else if(diff === 'medium'){
+      // SEDANG:
+      // 50% perkalian bersusun 2 digit × 1 digit (contoh: 24 × 3 = 72)
+      // 50% pembagian bersusun (porogapit sederhana) 2 digit ÷ 1 digit tanpa sisa (contoh: 72 ÷ 3 = 24)
+      if(Math.random() < 0.5){
+        const a = randInt(12, 45);
+        const b = randInt(2, 8);
+        const ans = a * b;
         return {
-          text: text,
-          html: html,
-          answer: ansVal,
-          answerDisplay: ansVal,
-          choices: generateFractionChoices(ansN, d)
+          text: `${a} × ${b} = ?`,
+          answer: ans,
+          choices: generateNumberChoices(ans, 10, 1, 400)
         };
       } else {
-        const n1 = randInt(2, d - 1);
-        const n2 = randInt(1, n1 - 1);
-        const ansN = n1 - n2;
-        const html = `<span class="frac"><span class="top">${n1}</span><span class="bottom">${d}</span></span> - <span class="frac"><span class="top">${n2}</span><span class="bottom">${d}</span></span> = ?`;
-        const text = `${n1}/${d} - ${n2}/${d} = ?`;
-        const ansVal = `${ansN}/${d}`;
+        const b = randInt(2, 7);
+        const maxQ = Math.floor(99 / b);
+        const minQ = 11;
+        const q = randInt(minQ, Math.max(minQ, maxQ));
+        const a = b * q;
         return {
-          text: text,
-          html: html,
-          answer: ansVal,
-          answerDisplay: ansVal,
-          choices: generateFractionChoices(ansN, d)
+          text: `${a} ÷ ${b} = ?`,
+          answer: q,
+          choices: generateNumberChoices(q, 10, 1, 99)
         };
+      }
+    } else {
+      // SULIT:
+      // 65% operasi hitung pecahan sederhana penyebut sama (contoh: 2/5 + 1/5 = 3/5)
+      // 35% perkalian 2 digit & porogapit angka lebih besar
+      if(Math.random() < 0.65){
+        const d = randInt(3, 9);
+        const isAdd = Math.random() < 0.5;
+        if(isAdd){
+          const n1 = randInt(1, Math.max(1, d - 2));
+          const n2 = randInt(1, d - n1);
+          const ansN = n1 + n2;
+          const html = `<span class="frac"><span class="top">${n1}</span><span class="bottom">${d}</span></span> + <span class="frac"><span class="top">${n2}</span><span class="bottom">${d}</span></span> = ?`;
+          const text = `${n1}/${d} + ${n2}/${d} = ?`;
+          const ansVal = `${ansN}/${d}`;
+          return {
+            text: text,
+            html: html,
+            answer: ansVal,
+            answerDisplay: ansVal,
+            choices: generateFractionChoices(ansN, d)
+          };
+        } else {
+          const n1 = randInt(2, d - 1);
+          const n2 = randInt(1, n1 - 1);
+          const ansN = n1 - n2;
+          const html = `<span class="frac"><span class="top">${n1}</span><span class="bottom">${d}</span></span> - <span class="frac"><span class="top">${n2}</span><span class="bottom">${d}</span></span> = ?`;
+          const text = `${n1}/${d} - ${n2}/${d} = ?`;
+          const ansVal = `${ansN}/${d}`;
+          return {
+            text: text,
+            html: html,
+            answer: ansVal,
+            answerDisplay: ansVal,
+            choices: generateFractionChoices(ansN, d)
+          };
+        }
+      } else {
+        const isMult = Math.random() < 0.5;
+        if(isMult){
+          const a = randInt(18, 49);
+          const b = randInt(3, 9);
+          const ans = a * b;
+          return {
+            text: `${a} × ${b} = ?`,
+            answer: ans,
+            choices: generateNumberChoices(ans, 10, 1, 9999)
+          };
+        } else {
+          const b = randInt(3, 8);
+          const maxQ = Math.floor(99 / b);
+          const q = randInt(12, Math.max(12, maxQ));
+          const a = b * q;
+          return {
+            text: `${a} ÷ ${b} = ?`,
+            answer: q,
+            choices: generateNumberChoices(q, 10, 1, 99)
+          };
+        }
       }
     }
   }
 
   // ---------- Question Dispatcher ----------
-  function generateQuestion(lvl){
-    if(lvl === 'k1' || lvl === 'easy') return generateQuestionK1();
-    if(lvl === 'k2' || lvl === 'medium') return generateQuestionK2();
-    if(lvl === 'k3' || lvl === 'hard') return generateQuestionK3();
-    if(lvl === 'k4'){
+  function generateQuestion(cls, diff){
+    cls = cls || currentClass;
+    diff = diff || currentDifficulty;
+    if(cls === 'k1') return generateQuestionK1(diff);
+    if(cls === 'k2') return generateQuestionK2(diff);
+    if(cls === 'k3') return generateQuestionK3(diff);
+    if(cls === 'k4'){
       const r = Math.random();
-      if(r < 0.333) return generateQuestionK1();
-      if(r < 0.666) return generateQuestionK2();
-      return generateQuestionK3();
+      if(r < 0.333) return generateQuestionK1(diff);
+      if(r < 0.666) return generateQuestionK2(diff);
+      return generateQuestionK3(diff);
     }
-    return generateQuestionK1();
+    return generateQuestionK1(diff);
   }
 
   // ---------- Visual Effects ----------
@@ -677,7 +852,7 @@
     const playerState = state[playerKey];
     playerState.isAnswering = false;
     
-    const q = generateQuestion(level);
+    const q = generateQuestion(currentClass, currentDifficulty);
     playerState.answer = q.answer;
     playerState.answerDisplay = q.answerDisplay || (q.html ? q.text : String(q.answer));
     
@@ -782,8 +957,11 @@
   function moveCpus(){
     if(raceOver || isCountdown) return;
     if(gameMode === '1p'){
-      moveRacer('cpu1', randInt(2,5));
-      moveRacer('cpu2', randInt(2,5));
+      let minMove = 2, maxMove = 5;
+      if(currentDifficulty === 'easy'){ minMove = 2; maxMove = 4; }
+      else if(currentDifficulty === 'hard'){ minMove = 3; maxMove = 5; }
+      moveRacer('cpu1', randInt(minMove, maxMove));
+      moveRacer('cpu2', randInt(minMove, maxMove));
     }
   }
 
@@ -889,10 +1067,9 @@
           
           if(gameMode === '1p'){
             if(cpuTimer) clearInterval(cpuTimer);
-            let cpuInterval = 1150;
-            if(level === 'k2') cpuInterval = 1250;
-            else if(level === 'k3') cpuInterval = 1350;
-            else if(level === 'k4') cpuInterval = 1250;
+            let cpuInterval = 1250;
+            if(currentDifficulty === 'easy') cpuInterval = 1400;
+            else if(currentDifficulty === 'hard') cpuInterval = 1100;
             cpuTimer = setInterval(moveCpus, cpuInterval);
           }
         }, 800);
@@ -901,10 +1078,11 @@
     tick();
   }
 
-  function startRace(mode, lvl){
+  function startRace(mode, cls, diff){
     AudioController.playClick();
     gameMode = mode;
-    level = lvl;
+    currentClass = cls || currentClass;
+    currentDifficulty = diff || currentDifficulty;
     
     // Reset state
     raceOver = false;
@@ -918,7 +1096,7 @@
     carP2.style.left = '0%';
     carCPU2.style.left = '0%';
     
-    levelValue.textContent = LEVEL_LABELS[lvl];
+    levelValue.textContent = `${CLASS_TITLES[currentClass]} • ${DIFF_TITLES[currentDifficulty]}`;
     
     if(gameMode === '1p'){
       p1Name = "Kamu";
@@ -931,7 +1109,6 @@
       hudStreakP2.style.display = 'none';
       document.getElementById('hudLabelP1').textContent = 'Skor';
       document.getElementById('labelPanelP1').textContent = 'Pertanyaan';
-      // Hide key labels in 1P mode using CSS rule injection or JS logic inside renderQuestionFor
     } else {
       laneLabelP1.textContent = p1Name.toUpperCase();
       laneLabelP2.textContent = p2Name.toUpperCase();
@@ -972,11 +1149,11 @@
       if(winner === 'p1'){
         endEmoji.textContent = '🏆';
         endTitle.textContent = 'Kamu Menang!';
-        endSubtitle.textContent = 'Kerja bagus, kamu jago matematika!';
+        endSubtitle.textContent = `Kerja bagus di ${CLASS_TITLES[currentClass]} (${DIFF_TITLES[currentDifficulty]})!`;
         AudioController.playWin();
         triggerConfetti();
-        const best = getBestScore(level);
-        if(state.p1.score > best) setBestScore(level, state.p1.score);
+        const best = getBestScore(currentClass, currentDifficulty);
+        if(state.p1.score > best) setBestScore(currentClass, currentDifficulty, state.p1.score);
       } else {
         endEmoji.textContent = '💪';
         endTitle.textContent = 'Hampir Menang!';
@@ -1026,22 +1203,39 @@
     Object.keys(screens).forEach(key => {
       screens[key].classList.toggle('active', key === name);
     });
-    if(name === 'start') renderBestScores();
+    if(name === 'start'){
+      updateDifficultySubtitles();
+      renderBestScores();
+    }
   }
 
   // ---------- Init Events ----------
+  // Class Tabs
+  document.querySelectorAll('.class-tab-btn').forEach(btn => {
+    btn.addEventListener('click', function(){
+      AudioController.init();
+      AudioController.playClick();
+      document.querySelectorAll('.class-tab-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentClass = btn.getAttribute('data-class');
+      updateDifficultySubtitles();
+      renderBestScores();
+    });
+  });
+
+  // Level / Difficulty Buttons
   document.querySelectorAll('.level-btn').forEach(btn => {
     btn.addEventListener('click', function(){
       AudioController.init();
       const mode = btn.getAttribute('data-mode');
-      const lvl = btn.getAttribute('data-level');
+      const diff = btn.getAttribute('data-difficulty');
       if (mode === '2p') {
-        pendingLevel = lvl;
+        pendingDifficulty = diff;
         document.getElementById('inputNameP1').value = '';
         document.getElementById('inputNameP2').value = '';
         showScreen('name');
       } else {
-        startRace(mode, lvl);
+        startRace(mode, currentClass, diff);
       }
     });
   });
@@ -1050,7 +1244,7 @@
     AudioController.playClick();
     p1Name = document.getElementById('inputNameP1').value.trim() || 'Pembalap Kiri';
     p2Name = document.getElementById('inputNameP2').value.trim() || 'Pembalap Kanan';
-    startRace('2p', pendingLevel);
+    startRace('2p', currentClass, pendingDifficulty);
   });
   
   document.getElementById('cancelNameBtn').addEventListener('click', function(){
@@ -1060,7 +1254,7 @@
   
   document.getElementById('playAgainBtn').addEventListener('click', function(){
     AudioController.playClick();
-    startRace(gameMode, level);
+    startRace(gameMode, currentClass, currentDifficulty);
   });
   
   document.getElementById('changeLevelBtn').addEventListener('click', function(){
@@ -1070,5 +1264,6 @@
   });
 
   // Init
+  updateDifficultySubtitles();
   renderBestScores();
 })();
