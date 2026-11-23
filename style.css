@@ -897,6 +897,75 @@ button { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
     margin: 0;
   }
 
+  /* ===== FASE 2D: proporsi lintasan (mobile, 1P dan 2P) ===== */
+  /* Ukuran mobil mengikuti tinggi layar; dvh dengan cadangan vh */
+  #screen-game {
+    --car-size: clamp(30px, 7.5vh, 52px);
+    --car-size: clamp(30px, 7.5dvh, 52px);
+  }
+  /* Lane: latar dipindah ke ::before supaya lane bisa dipendekkan.
+     Dengan begitu posisi mobil 100% = bagian depan mobil tepat di garis finis. */
+  #screen-game .lane {
+    background: none;
+    overflow: visible;
+    margin-right: calc(var(--car-size) * 1.2 + 12px);
+  }
+  #screen-game .lane::before {
+    content: "";
+    position: absolute;
+    top: 0; bottom: 0; left: 0;
+    width: calc(100% + var(--car-size) * 1.2);
+    background: linear-gradient(180deg, #4A4870, #423F63);
+    border-radius: 8px;
+  }
+  #screen-game .racer {
+    font-size: var(--car-size);
+    line-height: 1;
+    width: 1.2em;
+    text-align: center;
+  }
+  /* Nama di ujung kanan lane (tidak tertutup mobil saat start), latar semi transparan */
+  #screen-game .lane-label {
+    left: auto; right: 4px; top: 50%;
+    transform: translateY(-50%);
+    max-width: 60%;
+    padding: 1px 6px;
+    font-size: 0.7rem;
+    color: #fff;
+    background: rgba(0,0,0,0.4);
+    border-radius: 6px;
+  }
+
+  /* 1P: HUD ~9%, lintasan ~38%, sisanya panel soal */
+  #screen-game.mode-1p .hud { flex: 0 0 9%; min-height: 40px; padding-top: 0; padding-bottom: 0; }
+  #screen-game.mode-1p .track-wrap {
+    flex: 0 0 38%;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    padding: 6px 10px;
+  }
+  #screen-game.mode-1p .track-wrap .lane { flex: 1 1 0; height: auto; min-height: 0; margin-bottom: 0; }
+  #screen-game.mode-1p .panel-label { display: none; } /* siapa yang menjawab sudah jelas */
+  #screen-game.mode-1p #panelP1 { padding: 8px 10px; gap: 6px; justify-content: flex-start; }
+  #screen-game.mode-1p .question-text {
+    flex: 1 1 auto;
+    min-height: 0;
+    margin-bottom: 0;
+    overflow-y: auto;
+    font-size: clamp(1.1rem, 3.6vh, 1.7rem);
+    font-size: clamp(1.1rem, 3.6dvh, 1.7rem);
+  }
+  #screen-game.mode-1p .answers-grid { flex: 0 0 auto; }
+  #screen-game.mode-1p .answer-btn { min-height: 48px; }
+
+  /* 2P: lintasan tengah cukup besar */
+  #screen-game.mode-2p .track-wrap .lane {
+    height: clamp(38px, 7vh, 54px);
+    height: clamp(38px, 7dvh, 54px);
+    margin-bottom: 4px;
+  }
+  #screen-game.mode-2p .track-wrap .lane:last-child { margin-bottom: 0; }
   /* Popup jeda di mobile */
   .pause-card {
     padding: 20px 16px;
