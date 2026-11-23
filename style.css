@@ -536,6 +536,41 @@ h1, h2, h3 { font-family: 'Baloo 2', cursive; margin: 0; }
 }
 .secondary-btn:active { transform: translateY(3px); box-shadow: 0 2px 0 #C9E6F7; }
 
+/* ----- Perbaikan sentuhan (mobile) ----- */
+/* touch-action: manipulation = tidak ada jeda 300ms dan tidak ada zoom saat tap ganda */
+button { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+.answer-btn { min-height: 64px; user-select: none; -webkit-user-select: none; }
+/* Elemen dekoratif tidak boleh menangkap sentuhan */
+.sun, .smoke, .finish-line-bg, .lane-label, .explanation-box, .feedback { pointer-events: none; }
+/* Nama lawan panjang dipotong rapi di layar kecil */
+.lane-label { max-width: 45%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Tombol pause di pojok HUD */
+.pause-btn {
+  width: 48px; height: 48px;
+  border-radius: 50%;
+  border: 3px solid var(--white);
+  background: var(--coral);
+  color: var(--white);
+  font-size: 1.3rem;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 4px 0 #C74A4A;
+}
+.pause-btn:active { transform: translateY(3px); box-shadow: 0 1px 0 #C74A4A; }
+
+/* Tombol di popup pause: besar dan mudah ditekan */
+.pause-card .primary-btn, .pause-card .secondary-btn {
+  display: block; width: 100%;
+  margin: 8px 0; min-height: 56px; font-size: 1.2rem;
+}
+
+/* Layar kecil: tombol suara diperkecil dan konten diberi ruang agar tidak tertutup */
+@media (max-width: 600px) {
+  .audio-toggle { width: 40px; height: 40px; top: 8px; left: 8px; font-size: 1.2rem; }
+  body { padding-top: 60px; }
+}
+
 /* Confetti Container */
 #confetti-container {
   position: fixed;

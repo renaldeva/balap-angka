@@ -118,15 +118,41 @@
   let p2Name = "Pemain 2";
   let pendingDifficulty = 'easy';
   
+  // Data pemain baru (dipakai saat awal dan setiap balapan dimulai / diulang)
+  function newPlayerState(){
+    return {
+      pos:0, score:0, streak:0, answer:null, isAnswering:false, bestStreak:0,
+      explanation:null, explanationTimer:null,
+      nextTimer:null // timer menuju soal berikutnya
+    };
+  }
+
   const state = {
-    p1: { pos:0, score:0, streak:0, answer:null, isAnswering:false, bestStreak:0, explanation:null, explanationTimer:null },
-    p2: { pos:0, score:0, streak:0, answer:null, isAnswering:false, bestStreak:0, explanation:null, explanationTimer:null },
+    p1: newPlayerState(),
+    p2: newPlayerState(),
     cpu1: { pos:0 },
     cpu2: { pos:0 }
   };
 
   let cpuTimer = null;
   const FINISH = 100;
+
+  // ---------- Pengaturan yang mudah diubah ----------
+  // Waktu baca soal panjang (soal cerita). Hanya berlaku di mode 1 Pemain:
+  // CPU berhenti sebentar selama waktu ini (atau sampai pemain menjawab).
+  const READ_TIME_BASE_MS = 2000;     // waktu dasar (milidetik)
+  const READ_TIME_PER_CHAR_MS = 100;  // tambahan waktu per huruf (0,1 detik)
+  const LONG_TEXT_MIN_CHARS = 30;     // soal dengan huruf <= angka ini dianggap soal biasa (CPU tidak ditahan)
+
+  // Nama lawan komputer (diambil acak, dua lawan selalu berbeda). Silakan tambah nama baru.
+  const COMPUTER_NAMES = [
+    'Si Kilat', 'Turbo', 'Roket Biru', 'Petir', 'Elang Cepat',
+    'Macan Turbo', 'Bayu Ngebut', 'Si Meteor', 'Jago Balap', 'Kancil Cepat',
+    'Naga Api', 'Kijang Emas', 'Badai', 'Komet', 'Si Bintang'
+  ];
+  let cpuNames = ['Turbo', 'Petir']; // nama lawan balapan yang sedang berjalan
+  let cpuHoldUntil = 0;              // CPU tidak bergerak sampai waktu ini
+  let cpuHoldRemaining = 0;          // sisa waktu tahan saat game dijeda
 
   const CLASS_TITLES = {
     k1: '🟢 Kelas 1 SD',
@@ -197,6 +223,7 @@
   const carCPU2 = document.getElementById('carCPU2');
   const laneLabelP1 = document.getElementById('laneLabelP1');
   const laneLabelP2 = document.getElementById('laneLabelP2');
+  const laneLabelCPU2 = document.getElementById('laneLabelCPU2');
 
   // Panels
   const panelsContainer = document.getElementById('panelsContainer');
@@ -1292,6 +1319,8 @@
     playerState.answer = q.answer;
     playerState.answerDisplay = q.answerDisplay || (q.html ? q.text : String(q.answer));
     playerState.explanation = q.explanation || null;
+    // Soal panjang (soal cerita): CPU ditahan sebentar supaya siswa sempat membaca (hanya 1P)
+    if(gameMode === '1p' && playerKey === 'p1') holdCpuForReading(q.text);
     
     const qText = playerKey === 'p1' ? qTextP1 : qTextP2;
     const grid = playerKey === 'p1' ? gridP1 : gridP2;
@@ -1313,7 +1342,7 @@
       btn.dataset.index = index;
       
       btn.addEventListener('click', () => {
-        if(gameMode === '1p' && !isPaused) handleAnswerClick(playerKey, choiceObj.val, index);
+        if(!isPaused) handleAnswerClick(playerKey, choiceObj.val, index); // berlaku 1P dan 2P (layar sentuh)
       });
       grid.appendChild(btn);
     });
@@ -1325,6 +1354,7 @@
     if(playerState.isAnswering) return;
     
     playerState.isAnswering = true;
+    if(gameMode === '1p' && playerKey === 'p1') cpuHoldUntil = 0; // sudah menjawab, CPU jalan lagi
     const grid = playerKey === 'p1' ? gridP1 : gridP2;
     const fb = playerKey === 'p1' ? fbP1 : fbP2;
     const panel = playerKey === 'p1' ? panelP1 : panelP2;
@@ -1397,7 +1427,10 @@
     }
     updateHud();
     
-    setTimeout(() => {
+    // Soal berikutnya muncul setelah 0,9 detik. Timer disimpan agar bisa dihentikan saat pause.
+    if(playerState.nextTimer) clearTimeout(playerState.nextTimer);
+    playerState.nextTimer = setTimeout(() => {
+      playerState.nextTimer = null;
       if(!raceOver && !isCountdown && !isPaused) renderQuestionFor(playerKey);
     }, 900);
   }
@@ -1416,6 +1449,7 @@
 
   function moveCpus(){
     if(raceOver || isCountdown) return;
+    if(Date.now() < cpuHoldUntil) return; // sedang menunggu siswa membaca soal panjang
     if(gameMode === '1p'){
       let minMove = 2, maxMove = 5;
       if(selectedDifficulty === 'easy'){ minMove = 2; maxMove = 4; }
@@ -1451,6 +1485,11 @@
 
   // ---------- Keyboard Handling ----------
   document.addEventListener('keydown', function(e){
+    // Esc: jeda / lanjutkan (memakai fungsi yang sama dengan tombol pause)
+    if(e.key === 'Escape'){
+      if(isPaused) resumeGame(); else pauseGame();
+      return;
+    }
     if(raceOver || isCountdown || isPaused) return;
     const key = e.key.toLowerCase();
     
@@ -1511,6 +1550,80 @@
     }
   }
 
+  // Menahan CPU saat soal panjang (soal cerita) tampil. Soal pendek tidak ditahan,
+  // jadi kecepatan CPU untuk soal biasa tidak berubah.
+  function holdCpuForReading(text){
+    const len = String(text).length;
+    if(len <= LONG_TEXT_MIN_CHARS){
+      cpuHoldUntil = 0;
+      return;
+    }
+    cpuHoldUntil = Date.now() + READ_TIME_BASE_MS + len * READ_TIME_PER_CHAR_MS;
+  }
+
+  // Menghentikan semua timer balapan: CPU, countdown, soal berikutnya, kotak penjelasan
+  function clearRaceTimers(){
+    stopCpuLoop();
+    if(countdownTimer){
+      clearTimeout(countdownTimer);
+      countdownTimer = null;
+    }
+    ['p1', 'p2'].forEach(key => {
+      const ps = state[key];
+      if(ps.nextTimer) clearTimeout(ps.nextTimer);
+      if(ps.explanationTimer) clearTimeout(ps.explanationTimer);
+      ps.nextTimer = null;
+      ps.explanationTimer = null;
+    });
+    cpuHoldUntil = 0;
+    cpuHoldRemaining = 0;
+  }
+
+  // PAUSE: satu fungsi untuk tombol pause, tombol Esc, dan tab tidak aktif
+  function pauseGame(){
+    if(isPaused || raceOver || !screens.game.classList.contains('active')) return;
+    isPaused = true;
+    stopCpuLoop();
+    if(countdownTimer){
+      clearTimeout(countdownTimer);
+      countdownTimer = null;
+    }
+    ['p1', 'p2'].forEach(key => {
+      if(state[key].nextTimer){
+        clearTimeout(state[key].nextTimer);
+        state[key].nextTimer = null;
+      }
+    });
+    cpuHoldRemaining = Math.max(0, cpuHoldUntil - Date.now());
+    AudioController.stopBGM();
+    pauseOverlay.style.display = 'flex';
+  }
+
+  // RESUME: satu fungsi untuk tombol Lanjut dan tombol Esc
+  function resumeGame(){
+    if(!isPaused) return;
+    isPaused = false;
+    pauseOverlay.style.display = 'none';
+
+    if(isCountdown){
+      // Countdown dilanjutkan dari angka terakhir
+      startCountdown(countdownVal > 0 ? countdownVal : 1);
+      return;
+    }
+    if(raceOver) return;
+
+    AudioController.playRaceBGM();
+    cpuHoldUntil = Date.now() + cpuHoldRemaining;
+    if(gameMode === '1p') startCpuLoop(); // startCpuLoop menghentikan interval lama dulu, jadi tidak ganda
+
+    // Pemain yang sedang menunggu soal berikutnya: tampilkan sekarang.
+    // (Tanpa ini tombol jawaban tetap terkunci setelah jeda.)
+    ['p1', 'p2'].forEach(key => {
+      if(key === 'p2' && gameMode !== '2p') return;
+      if(state[key].isAnswering) renderQuestionFor(key);
+    });
+  }
+
   function startCountdown(initialCount = 3){
     isCountdown = true;
     countdownVal = initialCount;
@@ -1557,6 +1670,8 @@
 
   function startRace(mode, cls, diff){
     AudioController.playClick();
+    clearRaceTimers();
+    AudioController.stopBGM();
     gameMode = mode;
     selectedMode = mode;
     selectedClass = cls || selectedClass;
@@ -1574,8 +1689,8 @@
     if(expP1) expP1.style.display = 'none';
     if(expP2) expP2.style.display = 'none';
 
-    state.p1 = { pos:0, score:0, streak:0, answer:null, isAnswering:false, bestStreak:0, explanation:null, explanationTimer:null };
-    state.p2 = { pos:0, score:0, streak:0, answer:null, isAnswering:false, bestStreak:0, explanation:null, explanationTimer:null };
+    state.p1 = newPlayerState();
+    state.p2 = newPlayerState();
     state.cpu1 = { pos:0 };
     state.cpu2 = { pos:0 };
     
@@ -1588,7 +1703,10 @@
     if(gameMode === '1p'){
       p1Name = "Kamu";
       laneLabelP1.textContent = p1Name.toUpperCase();
-      laneLabelP2.textContent = 'CPU 1';
+      // Dua lawan mendapat nama berbeda, dan tetap sama selama satu balapan
+      cpuNames = shuffle(COMPUTER_NAMES).slice(0, 2);
+      laneLabelP2.textContent = cpuNames[0];
+      laneLabelCPU2.textContent = cpuNames[1];
       laneCPU2.style.display = 'block';
       panelsContainer.classList.remove('two-player');
       panelP2.style.display = 'none';
@@ -1624,14 +1742,8 @@
     raceOver = true;
     isPaused = false;
     AudioController.stopBGM();
-    stopCpuLoop();
-    if(countdownTimer){
-      clearTimeout(countdownTimer);
-      countdownTimer = null;
-    }
+    clearRaceTimers();
     if(pauseOverlay) pauseOverlay.style.display = 'none';
-    if(state.p1.explanationTimer) clearTimeout(state.p1.explanationTimer);
-    if(state.p2.explanationTimer) clearTimeout(state.p2.explanationTimer);
     if(expP1) expP1.style.display = 'none';
     if(expP2) expP2.style.display = 'none';
 
@@ -1654,7 +1766,8 @@
       } else {
         endEmoji.textContent = '💪';
         endTitle.textContent = 'Hampir Menang!';
-        endSubtitle.textContent = 'Ayo coba lagi, kamu pasti bisa menang!';
+        const winnerName = winner === 'cpu2' ? cpuNames[1] : cpuNames[0];
+        endSubtitle.textContent = `${winnerName} menang kali ini. Ayo coba lagi, kamu pasti bisa menang!`;
         AudioController.playLose();
       }
       
@@ -1800,51 +1913,37 @@
     AudioController.playMenuBGM();
   });
 
-  // ---------- Visibility Change (Auto-Pause) ----------
-  document.addEventListener('visibilitychange', function(){
-    if(document.visibilityState === 'hidden'){
-      // Tab tidak aktif / disembunyikan
-      if(screens.game.classList.contains('active') && !raceOver){
-        isPaused = true;
-        stopCpuLoop();
-        if(countdownTimer){
-          clearTimeout(countdownTimer);
-          countdownTimer = null;
-        }
-        AudioController.stopBGM();
-      } else if(screens.start.classList.contains('active')){
-        AudioController.stopBGM();
-      }
-    } else {
-      // Tab aktif kembali
-      if(screens.game.classList.contains('active') && !raceOver && isPaused){
-        // Tampilkan overlay pause agar siswa siap melanjutkan
-        if(pauseOverlay) pauseOverlay.style.display = 'flex';
-      } else if(screens.start.classList.contains('active')){
-        // Jika di menu start dan tidak mute, bunyikan kembali menu BGM
-        AudioController.playMenuBGM();
-      }
-    }
+  // ---------- Pause / Resume Controls ----------
+  // Semua jalur pause (tombol, Esc, tab tidak aktif) memakai pauseGame() dan resumeGame()
+  const pauseBtn = document.getElementById('pauseBtn');
+  const restartBtn = document.getElementById('restartBtn');
+
+  pauseBtn.addEventListener('click', function(){
+    AudioController.init();
+    AudioController.playClick();
+    pauseGame();
   });
 
-  if(resumeBtn){
-    resumeBtn.addEventListener('click', function(){
-      AudioController.init();
-      AudioController.playClick();
-      if(pauseOverlay) pauseOverlay.style.display = 'none';
-      isPaused = false;
-      
-      if(isCountdown){
-        // Lanjutkan countdown dari nilai terakhir atau 3
-        startCountdown(countdownVal > 0 ? countdownVal : 3);
-      } else if(!raceOver){
-        AudioController.playRaceBGM();
-        if(gameMode === '1p'){
-          startCpuLoop();
-        }
-      }
-    });
-  }
+  resumeBtn.addEventListener('click', function(){
+    AudioController.init();
+    AudioController.playClick();
+    resumeGame();
+  });
+
+  // Mulai Ulang: mode, kelas, dan kesulitan sama; startRace mereset semua state
+  restartBtn.addEventListener('click', function(){
+    startRace(gameMode, selectedClass, selectedDifficulty);
+  });
+
+  // Tab tidak aktif -> jeda otomatis
+  document.addEventListener('visibilitychange', function(){
+    if(document.visibilityState === 'hidden'){
+      if(screens.game.classList.contains('active') && !raceOver) pauseGame();
+      else if(screens.start.classList.contains('active')) AudioController.stopBGM();
+    } else if(screens.start.classList.contains('active')){
+      AudioController.playMenuBGM();
+    }
+  });
 
   // Init
   renderBestScores();

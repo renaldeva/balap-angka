@@ -136,6 +136,7 @@
         <div class="label">Level</div>
         <div class="value" id="levelValue">-</div>
       </div>
+      <button class="pause-btn" id="pauseBtn" aria-label="Jeda permainan" title="Jeda (Esc)">⏸</button>
     </div>
 
     <div class="track-wrap">
@@ -146,11 +147,11 @@
         <div class="racer" id="carP1" style="left:0%">🏎️</div>
       </div>
       <div class="lane" id="laneP2">
-        <div class="lane-label" id="laneLabelP2">CPU 1</div>
+        <div class="lane-label" id="laneLabelP2">LAWAN 1</div>
         <div class="racer" id="carP2" style="left:0%">🚙</div>
       </div>
       <div class="lane" id="laneCPU2">
-        <div class="lane-label">CPU 2</div>
+        <div class="lane-label" id="laneLabelCPU2">LAWAN 2</div>
         <div class="racer" id="carCPU2" style="left:0%">🚕</div>
       </div>
 
@@ -184,8 +185,9 @@
       <div class="pause-card">
         <div class="pause-icon">⏸️</div>
         <h2>Game Dijeda</h2>
-        <div class="subtitle">Istirahat sejenak. Sudah siap balapan lagi?</div>
+        <div class="subtitle">Istirahat sejenak. Mau lanjut atau mulai ulang?</div>
         <button class="primary-btn" id="resumeBtn">Lanjut 🏁</button>
+        <button class="secondary-btn" id="restartBtn">Mulai Ulang 🔄</button>
       </div>
     </div>
   </section>
