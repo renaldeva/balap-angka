@@ -83,14 +83,22 @@
     };
   })();
 
-  document.getElementById('audioToggleBtn').addEventListener('click', function(e){
-    AudioController.init();
-    const muted = AudioController.toggleMute();
-    e.target.textContent = muted ? '🔈' : '🔊';
-    // If not muted and we are on start screen, play menu BGM
-    if(!muted && screens.start.classList.contains('active')) {
-       AudioController.playMenuBGM();
-    }
+  function syncAudioButtons(muted){
+    document.querySelectorAll('.audio-toggle').forEach(btn => {
+      btn.textContent = muted ? '🔈' : '🔊';
+    });
+  }
+
+  document.querySelectorAll('.audio-toggle').forEach(btn => {
+    btn.addEventListener('click', function(e){
+      AudioController.init();
+      const muted = AudioController.toggleMute();
+      syncAudioButtons(muted);
+      // If not muted and we are on start screen, play menu BGM
+      if(!muted && screens.start.classList.contains('active')) {
+        AudioController.playMenuBGM();
+      }
+    });
   });
 
   // Init audio and play menu BGM on first interaction anywhere
@@ -115,7 +123,7 @@
   let countdownTimer = null;
   let countdownVal = 3;
   let p1Name = "Kamu";
-  let p2Name = "Pemain 2";
+  let p2Name = "P2";
   let pendingDifficulty = 'easy';
   
   // Data pemain baru (dipakai saat awal dan setiap balapan dimulai / diulang)
@@ -1701,6 +1709,9 @@
     levelValue.textContent = `${CLASS_SHORT[selectedClass]} • ${DIFF_TITLES[selectedDifficulty]}`;
     
     if(gameMode === '1p'){
+      screens.game.classList.add('mode-1p');
+      screens.game.classList.remove('mode-2p');
+      panelP1.classList.remove('flip-top');
       p1Name = "Kamu";
       laneLabelP1.textContent = p1Name.toUpperCase();
       // Dua lawan mendapat nama berbeda, dan tetap sama selama satu balapan
@@ -1715,6 +1726,9 @@
       document.getElementById('hudLabelP1').textContent = 'Skor';
       document.getElementById('labelPanelP1').textContent = 'Pertanyaan';
     } else {
+      screens.game.classList.add('mode-2p');
+      screens.game.classList.remove('mode-1p');
+      panelP1.classList.add('flip-top');
       laneLabelP1.textContent = p1Name.toUpperCase();
       laneLabelP2.textContent = p2Name.toUpperCase();
       laneCPU2.style.display = 'none';
@@ -1725,7 +1739,8 @@
       document.getElementById('hudLabelP1').textContent = `Skor ${p1Name}`;
       document.getElementById('labelPanelP1').textContent = p1Name;
       document.getElementById('hudP2').querySelector('.label').textContent = `Skor ${p2Name}`;
-      document.getElementById('panelP2').querySelector('.panel-label').textContent = p2Name;
+      const p2LabelEl = document.getElementById('labelPanelP2') || document.getElementById('panelP2').querySelector('.panel-label');
+      if(p2LabelEl) p2LabelEl.textContent = p2Name;
     }
     
     updateHud();
@@ -1810,6 +1825,11 @@
   }
 
   function showScreen(name){
+    document.body.dataset.screen = name;
+    if(name !== 'game'){
+      screens.game.classList.remove('mode-1p', 'mode-2p');
+      panelP1.classList.remove('flip-top');
+    }
     Object.keys(screens).forEach(key => {
       screens[key].classList.toggle('active', key === name);
     });
@@ -1897,8 +1917,13 @@
   
   document.getElementById('start2PBtn').addEventListener('click', function(){
     AudioController.playClick();
-    p1Name = document.getElementById('inputNameP1').value.trim() || 'Pembalap Kiri';
-    p2Name = document.getElementById('inputNameP2').value.trim() || 'Pembalap Kanan';
+    let raw1 = document.getElementById('inputNameP1').value.trim() || 'P1';
+    let raw2 = document.getElementById('inputNameP2').value.trim() || 'P2';
+    // Sanitasi input mobile autocorrect (misal "p20"/"P20" dari keyboard sentuh dinormalkan ke "P2")
+    if (/^p20$/i.test(raw2)) raw2 = 'P2';
+    if (/^p10$/i.test(raw1)) raw1 = 'P1';
+    p1Name = raw1;
+    p2Name = raw2;
     startRace('2p', selectedClass, pendingDifficulty);
   });
   
@@ -1946,5 +1971,6 @@
   });
 
   // Init
+  showScreen('start');
   renderBestScores();
 })();

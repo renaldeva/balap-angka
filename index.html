@@ -101,11 +101,11 @@
       <div class="name-input-row">
         <div class="name-input-col">
           <label>Pemain Kiri (P1)</label>
-          <input type="text" id="inputNameP1" maxlength="12" placeholder="Pemain Kiri">
+          <input type="text" id="inputNameP1" maxlength="10" placeholder="P1" autocomplete="off" autocorrect="off" autocapitalize="words" spellcheck="false">
         </div>
         <div class="name-input-col">
           <label>Pemain Kanan (P2)</label>
-          <input type="text" id="inputNameP2" maxlength="12" placeholder="Pemain Kanan">
+          <input type="text" id="inputNameP2" maxlength="10" placeholder="P2" autocomplete="off" autocorrect="off" autocapitalize="words" spellcheck="false">
         </div>
       </div>
       <button class="primary-btn" id="start2PBtn">Mulai Balapan 🏁</button>
@@ -132,11 +132,14 @@
         <div class="label">Beruntun P2</div>
         <div class="value" id="streakP2">0</div>
       </div>
-      <div class="hud-item">
+      <div class="hud-item" id="hudLevel">
         <div class="label">Level</div>
         <div class="value" id="levelValue">-</div>
       </div>
-      <button class="pause-btn" id="pauseBtn" aria-label="Jeda permainan" title="Jeda (Esc)">⏸</button>
+      <div class="hud-controls">
+        <button class="audio-toggle hud-btn" id="hudAudioBtn" title="Mute/Unmute" aria-label="Suara">🔊</button>
+        <button class="pause-btn hud-btn" id="pauseBtn" aria-label="Jeda permainan" title="Jeda (Esc)">⏸</button>
+      </div>
     </div>
 
     <div class="track-wrap">
@@ -163,7 +166,7 @@
     <div class="panels-container" id="panelsContainer">
       <!-- Player 1 Panel -->
       <div class="question-panel" id="panelP1">
-        <div class="panel-label panel-p1" id="labelPanelP1">Pemain 1</div>
+        <div class="panel-label panel-p1" id="labelPanelP1">P1</div>
         <div class="question-text" id="questionTextP1">?</div>
         <div class="answers-grid" id="answersGridP1"></div>
         <div class="feedback" id="feedbackTextP1"></div>
@@ -172,7 +175,7 @@
 
       <!-- Player 2 Panel (Hidden in 1P mode) -->
       <div class="question-panel" id="panelP2" style="display:none;">
-        <div class="panel-label panel-p2">Pemain 2</div>
+        <div class="panel-label panel-p2" id="labelPanelP2">P2</div>
         <div class="question-text" id="questionTextP2">?</div>
         <div class="answers-grid" id="answersGridP2"></div>
         <div class="feedback" id="feedbackTextP2"></div>
