@@ -3,18 +3,18 @@
 Game balap edukasi: pemain menjawab soal matematika untuk membuat mobilnya melaju
 lebih cepat daripada dua mobil CPU. Tersedia pilihan kelas dengan 3 tingkat kesulitan (**Mudah**, **Sedang**, **Sulit**):
 
-- **Kelas 1 SD (0-100)**:
-  - 🟢 **Mudah**: Hitung dasar 1-10 & pengenalan nilai tempat (puluhan/satuan).
-  - 🟡 **Sedang**: Penjumlahan & pengurangan hasil s.d. 20 & dekomposisi nilai tempat.
-  - 🔴 **Sulit**: Operasi hitung 2 digit tanpa menyimpan/meminjam (langsung per kolom).
-- **Kelas 2 SD (0-999)**:
-  - 🟢 **Mudah**: Simpan/pinjam 2 digit dasar & perkalian/pembagian angka 2.
-  - 🟡 **Sedang**: Perkalian & pembagian dasar 1-5 (maks 50) serta simpan/pinjam menengah.
-  - 🔴 **Sulit**: Penjumlahan simpan & pengurangan pinjam 3 digit (ratusan).
-- **Kelas 3 SD (0-9.999)**:
-  - 🟢 **Mudah**: Otomatisasi perkalian komplit 1-10 (fokus tabel 6-10).
-  - 🟡 **Sedang**: Perkalian bersusun 2 digit × 1 digit & pembagian porogapit tanpa sisa.
-  - 🔴 **Sulit**: Operasi hitung pecahan sederhana berpenyebut sama (+ dan -).
+- **Kelas 1 SD (0-20)**:
+  - 🟢 **Mudah**: Tambah, kurang, pasangan bilangan s.d. 10 & soal cerita.
+  - 🟡 **Sedang**: Bilangan 11-20, nilai tempat, bandingkan bilangan, tambah/kurang s.d. 20.
+  - 🔴 **Sulit**: Tambah/kurang s.d. 20 melewati 10, bilangan yang hilang, selisih & soal cerita.
+- **Kelas 2 SD (0-100)**:
+  - 🟢 **Mudah**: Bilangan 21-50, nilai tempat, bandingkan, tambah/kurang 2 digit tanpa simpan/pinjam & soal cerita.
+  - 🟡 **Sedang**: Simpan/pinjam 2 digit, perkalian sebagai penjumlahan berulang, setengah, pembagian bagi rata.
+  - 🔴 **Sulit**: Simpan/pinjam s.d. 100, perkalian & pembagian 2-5, setengah/seperempat & soal cerita.
+- **Kelas 3 SD (0-1.000)**:
+  - 🟢 **Mudah**: Nilai tempat & bandingkan bilangan 3 digit, tabel perkalian 1-10 & soal cerita.
+  - 🟡 **Sedang**: Tambah/kurang 3 digit (simpan/pinjam), perkalian & pembagian bersusun, bilangan yang hilang.
+  - 🔴 **Sulit**: Pecahan berpenyebut sama (+ dan -), perkalian bersusun lebih besar, pembagian & soal cerita.
 - **Campuran 1-3**:
   - Tantangan gabungan materi Kelas 1, 2, dan 3 sesuai tingkat kesulitan (Mudah, Sedang, Sulit).
 

@@ -150,19 +150,19 @@
 
   const DIFF_SUBTITLES = {
     k1: {
-      easy: 'Hitung 1-10 & nilai tempat',
-      medium: 'Hitung s.d 20 & nilai tempat',
-      hard: 'Operasi 2 digit tanpa simpan/pinjam'
+      easy: 'Tambah, kurang & pasangan bilangan s.d. 10',
+      medium: 'Bilangan 11-20, nilai tempat & bandingkan',
+      hard: 'Tambah & kurang s.d. 20, soal cerita'
     },
     k2: {
-      easy: 'Simpan/pinjam 2 digit & kali/bagi 2',
-      medium: 'Kali & bagi 1-5 (maks 50)',
-      hard: 'Simpan/pinjam 3 digit (ratusan)'
+      easy: 'Bilangan 21-50 & tambah/kurang 2 digit',
+      medium: 'Simpan/pinjam, kali & bagi sederhana',
+      hard: 'Simpan/pinjam s.d. 100, kali & bagi 2-5'
     },
     k3: {
-      easy: 'Otomatisasi perkalian 1-10',
-      medium: 'Perkalian bersusun & porogapit 2 digit',
-      hard: 'Pecahan sederhana (penyebut sama)'
+      easy: 'Nilai tempat 3 digit & tabel kali 1-10',
+      medium: 'Tambah/kurang 3 digit, kali & bagi bersusun',
+      hard: 'Pecahan penyebut sama & soal tantangan'
     },
     k4: {
       easy: 'Soal mudah Kelas 1, 2, dan 3',
@@ -401,414 +401,785 @@
   }
 
   // ---------- KELAS 1 SD (Mudah, Sedang, Sulit) ----------
-  // - Bilangan cacah 0 - 100
-  // - Penjumlahan & pengurangan dasar (hasil maksimal 20)
-  // - Penjumlahan & pengurangan dua digit (tanpa menyimpan/meminjam)
-  // - Logika nilai tempat (puluhan & satuan)
+  // Urutan mengikuti buku Kelas I:
+  // - Mudah  : bilangan 1-10 (tambah, kurang, pasangan bilangan, soal cerita)
+  // - Sedang : bilangan 11-20 (nilai tempat, terbesar/terkecil, tambah/kurang s.d. 20, cerita)
+  // - Sulit  : tambah/kurang s.d. 20 melewati 10, mencari bilangan yang hilang, selisih, cerita
+  // Setiap soal punya field `explanation` untuk ditampilkan saat jawaban salah.
+
+  // Daftar kecil nama & benda supaya soal cerita bervariasi
+  const K1_NAMES = ['Upe', 'Kira', 'Malosi', 'Halim', 'Tika'];
+  const K1_ITEMS = ['kelereng', 'apel', 'buku', 'permen', 'balon'];
+
+  function pickOne(list){ return list[randInt(0, list.length - 1)]; }
+
+  // Soal "a + b = ?" angka langsung. Hasil tidak lebih dari maxSum.
+  function k1AddPlain(minA, maxA, maxSum){
+    const a = randInt(minA, maxA);
+    const b = randInt(1, maxSum - a);
+    const ans = a + b;
+    return {
+      text: `${a} + ${b} = ?`,
+      answer: ans,
+      explanation: `${a} + ${b}: mulai dari ${a}, tambah ${b} lagi, jadi ${ans}.`,
+      choices: generateNumberChoices(ans, 0, 1, maxSum)
+    };
+  }
+
+  // Soal "a - b = ?" angka langsung. a antara minA..maxA.
+  function k1SubPlain(minA, maxA){
+    const a = randInt(minA, maxA);
+    const b = randInt(1, a - 1);
+    const ans = a - b;
+    return {
+      text: `${a} - ${b} = ?`,
+      answer: ans,
+      explanation: `${a} - ${b}: mulai dari ${a}, kurangi ${b}, sisanya ${ans}.`,
+      choices: generateNumberChoices(ans, 0, 1, maxA)
+    };
+  }
+
+  // Soal cerita penjumlahan. Hasil tidak lebih dari maxSum.
+  function k1StoryAdd(minA, maxA, maxSum){
+    const name = pickOne(K1_NAMES);
+    const item = pickOne(K1_ITEMS);
+    const a = randInt(minA, maxA);
+    const b = randInt(1, maxSum - a);
+    const ans = a + b;
+    return {
+      text: `${name} punya ${a} ${item}. Lalu diberi ${b} ${item} lagi. Berapa ${item} ${name} sekarang?`,
+      answer: ans,
+      explanation: `Dijumlahkan: ${a} + ${b} = ${ans}. Jadi ${name} punya ${ans} ${item}.`,
+      choices: generateNumberChoices(ans, 0, 1, maxSum)
+    };
+  }
+
+  // Soal cerita pengurangan.
+  function k1StorySub(minA, maxA){
+    const name = pickOne(K1_NAMES);
+    const item = pickOne(K1_ITEMS);
+    const a = randInt(minA, maxA);
+    const b = randInt(1, a - 1);
+    const ans = a - b;
+    return {
+      text: `${name} punya ${a} ${item}. ${b} ${item} diberikan ke teman. Berapa sisanya?`,
+      answer: ans,
+      explanation: `Dikurangi: ${a} - ${b} = ${ans}. Jadi sisanya ${ans} ${item}.`,
+      choices: generateNumberChoices(ans, 0, 1, maxA)
+    };
+  }
+
+  // Penjumlahan melewati 10 (contoh: 8 + 5). Cara: genapkan ke 10 dulu.
+  function k1AddCross10(){
+    const a = randInt(6, 9);
+    const b = randInt(11 - a, 9); // supaya hasil lebih dari 10
+    const ans = a + b;
+    const toTen = 10 - a;
+    return {
+      text: `${a} + ${b} = ?`,
+      answer: ans,
+      explanation: `${a} + ${toTen} = 10, lalu 10 + ${b - toTen} = ${ans}. Jadi ${ans}.`,
+      choices: generateNumberChoices(ans, 11, 1, 20)
+    };
+  }
+
+  // Pengurangan melewati 10 (contoh: 15 - 7). Cara: turun ke 10 dulu.
+  function k1SubCross10(){
+    const a = randInt(12, 18);
+    const b = randInt(a - 9, 9); // supaya perlu melewati 10
+    const ans = a - b;
+    const toTen = a - 10;
+    return {
+      text: `${a} - ${b} = ?`,
+      answer: ans,
+      explanation: `${a} - ${toTen} = 10, lalu 10 - ${b - toTen} = ${ans}. Jadi ${ans}.`,
+      choices: generateNumberChoices(ans, 0, 1, 20)
+    };
+  }
+
+  // Pasangan bilangan: a dan ... jika digabung jadi total (total 4-10)
+  function k1NumberBond(){
+    const total = randInt(4, 10);
+    const a = randInt(1, total - 1);
+    const b = total - a;
+    return {
+      text: `Pasangan bilangan: ${a} dan ... jika digabung jadi ${total}`,
+      answer: b,
+      explanation: `${a} + ${b} = ${total}. Jadi pasangan ${a} adalah ${b}.`,
+      choices: generateNumberChoices(b, 0, 1, 10)
+    };
+  }
+
+  // Nilai tempat bilangan 11-19: puluhan selalu 1
+  function k1PlaceValue(){
+    const s = randInt(1, 9);
+    const num = 10 + s;
+    const type = randInt(1, 3);
+    if(type === 1){
+      return {
+        text: `${num} = 1 puluhan + ... satuan`,
+        answer: s,
+        explanation: `${num} terdiri dari 1 puluhan (10) dan ${s} satuan. Jadi ${s}.`,
+        choices: generateNumberChoices(s, 0, 1, 9)
+      };
+    } else if(type === 2){
+      return {
+        text: `1 puluhan + ${s} satuan = ...`,
+        answer: num,
+        explanation: `1 puluhan = 10. Lalu 10 + ${s} = ${num}.`,
+        choices: generateNumberChoices(num, 10, 1, 20)
+      };
+    }
+    return {
+      text: `Pada bilangan ${num}, ada berapa satuan?`,
+      answer: s,
+      explanation: `Pada ${num}, angka 1 adalah puluhan dan angka ${s} adalah satuan. Jadi ${s}.`,
+      choices: generateNumberChoices(s, 0, 1, 9)
+    };
+  }
+
+  // Membandingkan bilangan: yang paling besar / paling kecil dari 4 bilangan 11-20
+  function k1Compare(){
+    const nums = shuffle([11, 12, 13, 14, 15, 16, 17, 18, 19, 20]).slice(0, 4);
+    const sorted = [...nums].sort((x, y) => x - y);
+    const askBig = Math.random() < 0.5;
+    const ans = askBig ? sorted[3] : sorted[0];
+    return {
+      text: askBig ? 'Bilangan mana yang paling besar?' : 'Bilangan mana yang paling kecil?',
+      answer: ans,
+      explanation: `Urutan dari kecil: ${sorted.join(', ')}. ${askBig ? 'Paling besar' : 'Paling kecil'} adalah ${ans}.`,
+      choices: shuffle(nums).map(n => normalizeChoice(n))
+    };
+  }
+
+  // Mencari bilangan yang hilang: ... + b = total (hubungan tambah dan kurang)
+  function k1MissingAddend(){
+    const total = randInt(11, 20);
+    const b = randInt(2, 9);
+    const a = total - b;
+    return {
+      text: `... + ${b} = ${total}`,
+      answer: a,
+      explanation: `${total} - ${b} = ${a}. Tambah dan kurang saling berhubungan, jadi ${a}.`,
+      choices: generateNumberChoices(a, 1, 1, 20)
+    };
+  }
+
+  // Soal cerita selisih: siapa lebih banyak, berapa selisihnya
+  function k1StoryDifference(){
+    let n1 = pickOne(K1_NAMES);
+    let n2 = pickOne(K1_NAMES);
+    while(n2 === n1) n2 = pickOne(K1_NAMES);
+    const item = pickOne(K1_ITEMS);
+    const big = randInt(8, 20);
+    const small = randInt(3, big - 1);
+    const ans = big - small;
+    return {
+      text: `${n1} punya ${big} ${item}. ${n2} punya ${small} ${item}. Berapa selisihnya?`,
+      answer: ans,
+      explanation: `Selisih berarti dikurangi: ${big} - ${small} = ${ans}.`,
+      choices: generateNumberChoices(ans, 1, 1, 20)
+    };
+  }
+
   function generateQuestionK1(diff){
+    const r = Math.random();
     if(diff === 'easy'){
-      // MUDAH:
-      // 50% hitung dasar kecil hasil <= 10
-      // 50% tebak nilai tempat langsung
-      if(Math.random() < 0.5){
-        const isAdd = Math.random() < 0.5;
-        if(isAdd){
-          const a = randInt(1, 8);
-          const b = randInt(1, 10 - a);
-          const ans = a + b;
-          return {
-            text: `${a} + ${b} = ?`,
-            answer: ans,
-            choices: generateNumberChoices(ans, 0, 1, 10)
-          };
-        } else {
-          const a = randInt(2, 10);
-          const b = randInt(1, a - 1);
-          const ans = a - b;
-          return {
-            text: `${a} - ${b} = ?`,
-            answer: ans,
-            choices: generateNumberChoices(ans, 0, 1, 10)
-          };
-        }
-      } else {
-        const p = randInt(1, 9);
-        let s = randInt(0, 9);
-        if(s === p) s = (p % 9) + 1;
-        const num = p * 10 + s;
-        const askTens = Math.random() < 0.5;
-        if(askTens){
-          return {
-            text: `Angka puluhan dari ${num} adalah?`,
-            answer: p,
-            choices: makeUniqueChoices(p, [s, p * 10, num], () => randInt(1, 9))
-          };
-        } else {
-          return {
-            text: `Angka satuan dari ${num} adalah?`,
-            answer: s,
-            choices: makeUniqueChoices(s, [p, s * 10, num], () => randInt(0, 9))
-          };
-        }
-      }
+      // MUDAH: bilangan 1-10
+      if(r < 0.35) return k1AddPlain(1, 8, 10);
+      if(r < 0.6) return k1SubPlain(2, 10);
+      if(r < 0.8) return k1NumberBond();
+      return Math.random() < 0.5 ? k1StoryAdd(1, 8, 10) : k1StorySub(3, 10);
     } else if(diff === 'medium'){
-      // SEDANG:
-      // 50% hitung dasar hasil maksimal 20 (contoh: 8 + 7 = 15; 19 - 6 = 13)
-      // 50% dekomposisi nilai tempat (57 = ... puluhan + 7 satuan)
-      if(Math.random() < 0.5){
-        const isAdd = Math.random() < 0.5;
-        if(isAdd){
-          const a = randInt(1, 14);
-          const b = randInt(1, 20 - a);
-          const ans = a + b;
-          return {
-            text: `${a} + ${b} = ?`,
-            answer: ans,
-            choices: generateNumberChoices(ans, 0, 1, 20)
-          };
-        } else {
-          const a = randInt(4, 20);
-          const b = randInt(1, a - 1);
-          const ans = a - b;
-          return {
-            text: `${a} - ${b} = ?`,
-            answer: ans,
-            choices: generateNumberChoices(ans, 0, 1, 20)
-          };
-        }
-      } else {
-        const p = randInt(1, 9);
-        let s = randInt(0, 9);
-        if(s === p) s = (p % 9) + 1;
-        const num = p * 10 + s;
-        const v = randInt(1, 3);
-        if(v === 1){
-          return {
-            text: `Angka ${num} = ... puluhan + ${s} satuan`,
-            answer: p,
-            choices: makeUniqueChoices(p, [s, p * 10, (p + 1) % 10 || 1], () => randInt(1, 9))
-          };
-        } else if(v === 2){
-          return {
-            text: `Angka ${num} = ${p} puluhan + ... satuan`,
-            answer: s,
-            choices: makeUniqueChoices(s, [p, s * 10, (s + 2) % 10], () => randInt(0, 9))
-          };
-        } else {
-          return {
-            text: `${p} puluhan + ${s} satuan = ?`,
-            answer: num,
-            choices: makeUniqueChoices(num, [s * 10 + p, p * 10, s * 10 || (num + 10)], () => randInt(11, 99))
-          };
-        }
-      }
+      // SEDANG: bilangan 11-20
+      if(r < 0.25) return k1PlaceValue();
+      if(r < 0.5) return k1Compare();
+      if(r < 0.75) return Math.random() < 0.5 ? k1AddPlain(1, 14, 20) : k1SubPlain(11, 20);
+      return Math.random() < 0.5 ? k1StoryAdd(5, 14, 20) : k1StorySub(11, 20);
     } else {
-      // SULIT:
-      // Operasi dua digit tanpa menyimpan/meminjam (0 - 100, contoh: 23 + 14 = 37; 45 - 12 = 33)
-      const isAdd = Math.random() < 0.55;
-      if(isAdd){
-        const p1 = randInt(1, 7);
-        const p2 = randInt(1, 9 - p1);
-        const s1 = randInt(1, 8);
-        const s2 = randInt(0, 9 - s1);
-        const a = p1 * 10 + s1;
-        const b = p2 * 10 + s2;
-        const ans = a + b;
-        return {
-          text: `${a} + ${b} = ?`,
-          answer: ans,
-          choices: generateNumberChoices(ans, 10, 1, 100)
-        };
-      } else {
-        const p1 = randInt(2, 9);
-        const p2 = randInt(1, p1 - 1);
-        const s1 = randInt(1, 9);
-        const s2 = randInt(0, s1);
-        const a = p1 * 10 + s1;
-        const b = p2 * 10 + s2;
-        const ans = a - b;
-        return {
-          text: `${a} - ${b} = ?`,
-          answer: ans,
-          choices: generateNumberChoices(ans, 0, 1, 100)
-        };
-      }
+      // SULIT: tambah/kurang melewati 10, bilangan hilang, selisih, cerita
+      if(r < 0.25) return k1AddCross10();
+      if(r < 0.5) return k1SubCross10();
+      if(r < 0.7) return k1MissingAddend();
+      if(r < 0.85) return k1StoryDifference();
+      return k1StoryAdd(6, 12, 20);
     }
   }
 
   // ---------- KELAS 2 SD (Mudah, Sedang, Sulit) ----------
-  // - Bilangan cacah 0 - 999
-  // - Penjumlahan teknik menyimpan (hasil satuan > 9)
-  // - Pengurangan teknik meminjam (satuan atas < bawah)
-  // - Perkalian dasar 1 - 5 (hasil maksimal 50, konsep penjumlahan berulang)
-  // - Pembagian dasar habis dibagi 1 - 5
+  // Urutan mengikuti buku Kelas II:
+  // - Mudah  : bilangan 21-50 (nilai tempat, bandingkan), tambah/kurang 2 digit TANPA simpan/pinjam, cerita
+  // - Sedang : tambah simpan & kurang pinjam 2 digit, perkalian sebagai penjumlahan berulang,
+  //            setengah dari kumpulan benda, pembagian bagi rata, cerita
+  // - Sulit  : simpan/pinjam sampai 100, perkalian & pembagian 2-5, setengah/seperempat, cerita
+  // Setiap soal punya field `explanation` untuk ditampilkan saat jawaban salah.
+
+  const K2_ITEMS = ['jambu air', 'kue', 'pensil', 'stiker', 'buku'];
+
+  // Penjelasan penjumlahan 2 digit (otomatis tahu ada simpan atau tidak)
+  function k2AddExplain(a, b){
+    const p1 = Math.floor(a / 10), s1 = a % 10;
+    const p2 = Math.floor(b / 10), s2 = b % 10;
+    const ans = a + b;
+    if(s1 + s2 < 10){
+      return `${a} + ${b}: puluhan ${p1}+${p2}=${p1 + p2}, satuan ${s1}+${s2}=${s1 + s2}, jadi ${ans}.`;
+    }
+    return `${a} + ${b}: satuan ${s1}+${s2}=${s1 + s2}, tulis ${(s1 + s2) % 10}, simpan 1. Puluhan ${p1}+${p2}+1=${p1 + p2 + 1}. Jadi ${ans}.`;
+  }
+
+  // Penjelasan pengurangan 2 digit (otomatis tahu ada pinjam atau tidak)
+  function k2SubExplain(a, b){
+    const p1 = Math.floor(a / 10), s1 = a % 10;
+    const p2 = Math.floor(b / 10), s2 = b % 10;
+    const ans = a - b;
+    if(s1 >= s2){
+      return `${a} - ${b}: puluhan ${p1}-${p2}=${p1 - p2}, satuan ${s1}-${s2}=${s1 - s2}, jadi ${ans}.`;
+    }
+    return `${a} - ${b}: satuan ${s1} kurang dari ${s2}, pinjam 10: ${10 + s1}-${s2}=${10 + s1 - s2}. Puluhan ${p1}-1=${p1 - 1}, lalu ${p1 - 1}-${p2}=${p1 - 1 - p2}. Jadi ${ans}.`;
+  }
+
+  // Memilih angka a dan b untuk penjumlahan TANPA simpan (hasil < 60)
+  function k2NumsAddNoCarry(){
+    const p1 = randInt(1, 3), p2 = randInt(1, 4 - p1);
+    const s1 = randInt(0, 8), s2 = randInt(0, 9 - s1);
+    return { a: p1 * 10 + s1, b: p2 * 10 + s2 };
+  }
+  // Memilih angka a dan b untuk pengurangan TANPA pinjam
+  function k2NumsSubNoBorrow(){
+    const p1 = randInt(2, 5), p2 = randInt(1, p1 - 1);
+    const s1 = randInt(0, 9), s2 = randInt(0, s1);
+    return { a: p1 * 10 + s1, b: p2 * 10 + s2 };
+  }
+  // Penjumlahan DENGAN simpan. hard=true berarti hasil bisa sampai 99
+  function k2NumsAddCarry(hard){
+    const s1 = randInt(2, 9), s2 = randInt(10 - s1, 9);
+    const p1 = hard ? randInt(2, 6) : randInt(1, 3);
+    const p2 = hard ? randInt(1, 2) : randInt(1, 2);
+    return { a: p1 * 10 + s1, b: p2 * 10 + s2 };
+  }
+  // Pengurangan DENGAN pinjam
+  function k2NumsSubBorrow(hard){
+    const s2 = randInt(3, 9), s1 = randInt(0, s2 - 1);
+    const p1 = hard ? randInt(5, 9) : randInt(3, 5);
+    const p2 = randInt(1, p1 - 1);
+    return { a: p1 * 10 + s1, b: p2 * 10 + s2 };
+  }
+
+  // Soal angka langsung a + b
+  function k2AddPlain(n, maxVal){
+    const ans = n.a + n.b;
+    return {
+      text: `${n.a} + ${n.b} = ?`,
+      answer: ans,
+      explanation: k2AddExplain(n.a, n.b),
+      choices: generateNumberChoices(ans, 10, 1, maxVal)
+    };
+  }
+  // Soal angka langsung a - b
+  function k2SubPlain(n, maxVal){
+    const ans = n.a - n.b;
+    return {
+      text: `${n.a} - ${n.b} = ?`,
+      answer: ans,
+      explanation: k2SubExplain(n.a, n.b),
+      choices: generateNumberChoices(ans, 0, 1, maxVal)
+    };
+  }
+  // Soal cerita tambah
+  function k2StoryAdd(n, maxVal){
+    const name = pickOne(K1_NAMES), item = pickOne(K2_ITEMS);
+    const ans = n.a + n.b;
+    return {
+      text: `${name} punya ${n.a} ${item}. Lalu mendapat ${n.b} ${item} lagi. Berapa ${item} ${name} sekarang?`,
+      answer: ans,
+      explanation: k2AddExplain(n.a, n.b),
+      choices: generateNumberChoices(ans, 10, 1, maxVal)
+    };
+  }
+  // Soal cerita kurang
+  function k2StorySub(n, maxVal){
+    const name = pickOne(K1_NAMES), item = pickOne(K2_ITEMS);
+    const ans = n.a - n.b;
+    return {
+      text: `${name} punya ${n.a} ${item}. ${n.b} ${item} diberikan ke teman. Berapa sisanya?`,
+      answer: ans,
+      explanation: k2SubExplain(n.a, n.b),
+      choices: generateNumberChoices(ans, 0, 1, maxVal)
+    };
+  }
+
+  // Nilai tempat bilangan 21-50
+  function k2PlaceValue(){
+    const p = randInt(2, 5);
+    const s = randInt(0, 9);
+    const num = p * 10 + s;
+    const type = randInt(1, 3);
+    if(type === 1){
+      return {
+        text: `${num} = ... puluhan + ${s} satuan`,
+        answer: p,
+        explanation: `${num} terdiri dari ${p} puluhan (${p * 10}) dan ${s} satuan. Jadi ${p}.`,
+        choices: generateNumberChoices(p, 1, 1, 6)
+      };
+    } else if(type === 2){
+      return {
+        text: `${p} puluhan + ${s} satuan = ...`,
+        answer: num,
+        explanation: `${p} puluhan = ${p * 10}. Lalu ${p * 10} + ${s} = ${num}.`,
+        choices: generateNumberChoices(num, 20, 1, 59)
+      };
+    }
+    return {
+      text: `Pada bilangan ${num}, angka puluhannya adalah?`,
+      answer: p,
+      explanation: `Pada ${num}, angka ${p} ada di tempat puluhan. Angka ${s} ada di tempat satuan.`,
+      choices: generateNumberChoices(p, 1, 1, 6)
+    };
+  }
+
+  // Membandingkan bilangan: paling besar / paling kecil dari 4 bilangan 21-50
+  function k2Compare(){
+    const nums = [];
+    while(nums.length < 4){
+      const n = randInt(21, 50);
+      if(!nums.includes(n)) nums.push(n);
+    }
+    const sorted = [...nums].sort((x, y) => x - y);
+    const askBig = Math.random() < 0.5;
+    const ans = askBig ? sorted[3] : sorted[0];
+    return {
+      text: askBig ? 'Bilangan mana yang paling besar?' : 'Bilangan mana yang paling kecil?',
+      answer: ans,
+      explanation: `Urutan dari kecil: ${sorted.join(', ')}. ${askBig ? 'Paling besar' : 'Paling kecil'} adalah ${ans}.`,
+      choices: shuffle(nums).map(n => normalizeChoice(n))
+    };
+  }
+
+  // Perkalian sebagai penjumlahan berulang (a kali b)
+  function k2Mult(minA, maxA, minB, maxB){
+    const a = randInt(minA, maxA), b = randInt(minB, maxB);
+    const ans = a * b;
+    const repeated = Array(a).fill(b).join(' + ');
+    if(Math.random() < 0.3){
+      // Versi terbalik: penjumlahan berulang -> berapa kali?
+      return {
+        text: `${repeated} = ... × ${b}`,
+        answer: a,
+        explanation: `${b} muncul ${a} kali, jadi ${a} × ${b}.`,
+        choices: generateNumberChoices(a, 1, 1, 10)
+      };
+    }
+    return {
+      text: `${a} × ${b} = ?`,
+      answer: ans,
+      explanation: `${a} × ${b} artinya ${repeated} = ${ans}.`,
+      choices: generateNumberChoices(ans, 1, 1, 50)
+    };
+  }
+
+  // Soal cerita perkalian
+  function k2StoryMult(minA, maxA, minB, maxB){
+    const item = pickOne(K2_ITEMS);
+    const a = randInt(minA, maxA), b = randInt(minB, maxB);
+    const ans = a * b;
+    return {
+      text: `Ada ${a} piring. Setiap piring berisi ${b} ${item}. Berapa ${item} semuanya?`,
+      answer: ans,
+      explanation: `${Array(a).fill(b).join(' + ')} = ${ans}. Jadi ada ${ans} ${item}.`,
+      choices: generateNumberChoices(ans, 1, 1, 50)
+    };
+  }
+
+  // Pembagian: bagi rata (cerita atau angka langsung)
+  function k2Division(maxDivisor, minQ, maxQ, asStory){
+    const n = randInt(2, maxDivisor), q = randInt(minQ, maxQ);
+    const total = n * q;
+    if(asStory){
+      const item = pickOne(K2_ITEMS);
+      return {
+        text: `${total} ${item} dibagi rata untuk ${n} anak. Tiap anak dapat berapa?`,
+        answer: q,
+        explanation: `${total} ÷ ${n} = ${q}, karena ${n} × ${q} = ${total}.`,
+        choices: generateNumberChoices(q, 1, 1, 10)
+      };
+    }
+    return {
+      text: `${total} ÷ ${n} = ?`,
+      answer: q,
+      explanation: `${total} ÷ ${n} = ${q}, karena ${n} × ${q} = ${total}.`,
+      choices: generateNumberChoices(q, 1, 1, 10)
+    };
+  }
+
+  // Pecahan konkret: setengah atau seperempat dari kumpulan benda
+  function k2Fraction(allowQuarter){
+    const item = pickOne(K2_ITEMS);
+    const quarter = allowQuarter && Math.random() < 0.5;
+    const parts = quarter ? 4 : 2;
+    const q = randInt(1, quarter ? 5 : 10);
+    const total = parts * q;
+    return {
+      text: `${quarter ? 'Seperempat' : 'Setengah'} dari ${total} ${item} adalah ... ${item}`,
+      answer: q,
+      explanation: `${quarter ? 'Seperempat' : 'Setengah'} artinya dibagi ${parts}. ${total} ÷ ${parts} = ${q}.`,
+      choices: generateNumberChoices(q, 1, 1, 12)
+    };
+  }
+
   function generateQuestionK2(diff){
+    const r = Math.random();
+    const coin = Math.random() < 0.5;
     if(diff === 'easy'){
-      // MUDAH:
-      // 50% simpan/pinjam 2 digit dasar (angka kecil <= 45)
-      // 25% perkalian 1 & 2 (konsep penjumlahan berulang)
-      // 25% pembagian dasar 2 & 3
-      const r = Math.random();
-      if(r < 0.5){
-        const isAdd = Math.random() < 0.5;
-        if(isAdd){
-          const s1 = randInt(2, 9);
-          const s2 = randInt(10 - s1, 9);
-          const a = randInt(1, 3) * 10 + s1;
-          const b = randInt(0, 2) * 10 + s2;
-          const ans = a + b;
-          return {
-            text: `${a} + ${b} = ?`,
-            answer: ans,
-            choices: generateNumberChoices(ans, 10, 1, 70)
-          };
-        } else {
-          const s2 = randInt(3, 9);
-          const s1 = randInt(0, s2 - 1);
-          const a = randInt(2, 5) * 10 + s1;
-          const b = randInt(0, Math.floor(a/10) - 1) * 10 + s2;
-          const ans = a - b;
-          return {
-            text: `${a} - ${b} = ?`,
-            answer: ans,
-            choices: generateNumberChoices(ans, 0, 1, 60)
-          };
-        }
-      } else if(r < 0.75){
-        const a = randInt(1, 2);
-        const b = randInt(1, 10);
-        const ans = a * b;
-        const text = a > 1 && Math.random() < 0.5
-          ? `${a} × ${b} = ${Array(a).fill(b).join(' + ')} = ?`
-          : `${a} × ${b} = ?`;
-        return {
-          text: text,
-          answer: ans,
-          choices: generateNumberChoices(ans, 1, 1, 25)
-        };
-      } else {
-        const b = randInt(2, 3);
-        const q = randInt(1, 8);
-        const a = b * q;
-        return {
-          text: `${a} ÷ ${b} = ?`,
-          answer: q,
-          choices: generateNumberChoices(q, 1, 1, 10)
-        };
-      }
+      // MUDAH: bilangan 21-50, tanpa simpan/pinjam
+      if(r < 0.2) return k2PlaceValue();
+      if(r < 0.35) return k2Compare();
+      if(r < 0.55) return k2AddPlain(k2NumsAddNoCarry(), 59);
+      if(r < 0.75) return k2SubPlain(k2NumsSubNoBorrow(), 59);
+      return coin ? k2StoryAdd(k2NumsAddNoCarry(), 59) : k2StorySub(k2NumsSubNoBorrow(), 59);
     } else if(diff === 'medium'){
-      // SEDANG:
-      // 30% simpan/pinjam 2 digit lebih variatif (hasil s.d. 100)
-      // 40% perkalian 1-5 (hasil maksimal 50, konsep berulang)
-      // 30% pembagian dasar habis dibagi 1-5
-      const r = Math.random();
-      if(r < 0.3){
-        const isAdd = Math.random() < 0.5;
-        if(isAdd){
-          const s1 = randInt(2, 9);
-          const s2 = randInt(10 - s1, 9);
-          const a = randInt(2, 6) * 10 + s1;
-          const b = randInt(1, 8 - Math.floor(a/10)) * 10 + s2;
-          const ans = a + b;
-          return {
-            text: `${a} + ${b} = ?`,
-            answer: ans,
-            choices: generateNumberChoices(ans, 10, 1, 100)
-          };
-        } else {
-          const s2 = randInt(3, 9);
-          const s1 = randInt(0, s2 - 1);
-          const a = randInt(4, 9) * 10 + s1;
-          const b = randInt(1, Math.floor(a/10) - 1) * 10 + s2;
-          const ans = a - b;
-          return {
-            text: `${a} - ${b} = ?`,
-            answer: ans,
-            choices: generateNumberChoices(ans, 0, 1, 100)
-          };
-        }
-      } else if(r < 0.7){
-        const a = randInt(1, 5);
-        const b = randInt(1, 10);
-        const ans = a * b;
-        const text = a > 1 && Math.random() < 0.35
-          ? `${a} × ${b} = ${Array(a).fill(b).join(' + ')} = ?`
-          : `${a} × ${b} = ?`;
-        return {
-          text: text,
-          answer: ans,
-          choices: generateNumberChoices(ans, 1, 1, 50)
-        };
-      } else {
-        const b = randInt(2, 5);
-        const q = randInt(1, 10);
-        const a = b * q;
-        return {
-          text: `${a} ÷ ${b} = ?`,
-          answer: q,
-          choices: generateNumberChoices(q, 1, 1, 10)
-        };
-      }
+      // SEDANG: simpan/pinjam, perkalian berulang, setengah, pembagian
+      if(r < 0.2) return k2AddPlain(k2NumsAddCarry(false), 99);
+      if(r < 0.4) return k2SubPlain(k2NumsSubBorrow(false), 99);
+      if(r < 0.6) return k2Mult(2, 5, 2, 10);
+      if(r < 0.7) return k2Fraction(false);
+      if(r < 0.8) return k2Division(5, 2, 10, coin);
+      return coin ? k2StoryAdd(k2NumsAddCarry(false), 99) : k2StorySub(k2NumsSubBorrow(false), 99);
     } else {
-      // SULIT:
-      // 50% simpan/pinjam ratusan 3 digit (contoh: 148 + 25 = 173; 215 - 38 = 177)
-      // 50% perkalian & pembagian 1-5 cepat
-      if(Math.random() < 0.5){
-        const isAdd = Math.random() < 0.5;
-        if(isAdd){
-          const s1 = randInt(2, 9);
-          const s2 = randInt(10 - s1, 9);
-          const h1 = randInt(1, 6);
-          const p1 = randInt(0, 8);
-          const a = h1 * 100 + p1 * 10 + s1;
-          const b = randInt(1, 24) * 10 + s2;
-          const ans = a + b;
-          return {
-            text: `${a} + ${b} = ?`,
-            answer: ans,
-            choices: generateNumberChoices(ans, 10, 1, 999)
-          };
-        } else {
-          const s2 = randInt(3, 9);
-          const s1 = randInt(0, s2 - 1);
-          const a = randInt(12, 75) * 10 + s1;
-          const maxTensB = Math.min(25, Math.floor(a / 10) - 2);
-          const b = randInt(1, Math.max(1, maxTensB)) * 10 + s2;
-          const ans = a - b;
-          return {
-            text: `${a} - ${b} = ?`,
-            answer: ans,
-            choices: generateNumberChoices(ans, 0, 1, 999)
-          };
-        }
-      } else {
-        const isMult = Math.random() < 0.5;
-        if(isMult){
-          const a = randInt(2, 5);
-          const b = randInt(4, 10);
-          const ans = a * b;
-          return {
-            text: `${a} × ${b} = ?`,
-            answer: ans,
-            choices: generateNumberChoices(ans, 1, 1, 50)
-          };
-        } else {
-          const b = randInt(2, 5);
-          const q = randInt(4, 10);
-          const a = b * q;
-          return {
-            text: `${a} ÷ ${b} = ?`,
-            answer: q,
-            choices: generateNumberChoices(q, 1, 1, 10)
-          };
-        }
-      }
+      // SULIT: simpan/pinjam sampai 100, kali & bagi 2-5, setengah/seperempat, cerita
+      if(r < 0.2) return k2AddPlain(k2NumsAddCarry(true), 99);
+      if(r < 0.4) return k2SubPlain(k2NumsSubBorrow(true), 99);
+      if(r < 0.55) return k2Mult(3, 5, 4, 10);
+      if(r < 0.65) return k2Division(5, 4, 10, false);
+      if(r < 0.75) return k2Fraction(true);
+      if(r < 0.85) return k2StoryMult(3, 5, 3, 10);
+      return coin ? k2StoryAdd(k2NumsAddCarry(true), 99) : k2StorySub(k2NumsSubBorrow(true), 99);
     }
   }
 
   // ---------- KELAS 3 SD (Mudah, Sedang, Sulit) ----------
-  // - Bilangan cacah 0 - 9.999
-  // - Perkalian komplit (1 - 10)
-  // - Perkalian 2 digit dengan 1 digit (bersusun)
-  // - Pembagian 2 digit dengan 1 digit tanpa sisa (porogapit sederhana)
-  // - Operasi hitung pecahan sederhana (penyebut sama)
-  function generateQuestionK3(diff){
-    if(diff === 'easy'){
-      // MUDAH:
-      // 100% Perkalian komplit (1 - 10), otomatisasi perkalian angka 1 sampai 10
-      let a = randInt(6, 10);
-      let b = randInt(2, 10);
-      if(Math.random() < 0.5) [a, b] = [b, a];
-      const ans = a * b;
+  // Urutan mengikuti buku Kelas III:
+  // - Mudah  : bilangan sampai 1.000 (nilai tempat, bandingkan), tabel perkalian 1-10, cerita perkalian
+  // - Sedang : tambah/kurang 3 digit (simpan/pinjam), perkalian & pembagian bersusun, bilangan yang hilang, cerita
+  // - Sulit  : pecahan berpenyebut sama (+ dan -), perkalian bersusun lebih besar, pembagian, soal cerita
+  // Setiap soal punya field `explanation` untuk ditampilkan saat jawaban salah.
+
+  const K3_ITEMS = ['kelereng', 'permen', 'pensil', 'apel', 'stiker'];
+
+  // HTML pecahan bertumpuk (memakai style .frac yang sudah ada)
+  function fracHtml(n, d){
+    return `<span class="frac"><span class="top">${n}</span><span class="bottom">${d}</span></span>`;
+  }
+
+  // Penjelasan penjumlahan 3 digit per kolom (satuan, puluhan, ratusan)
+  function k3AddExplain(a, b){
+    const da = [a % 10, Math.floor(a / 10) % 10, Math.floor(a / 100)];
+    const db = [b % 10, Math.floor(b / 10) % 10, Math.floor(b / 100)];
+    const names = ['satuan', 'puluhan', 'ratusan'];
+    let carry = 0;
+    const parts = [];
+    for(let i = 0; i < 3; i++){
+      const sum = da[i] + db[i] + carry;
+      const plus = carry ? `${da[i]}+${db[i]}+1` : `${da[i]}+${db[i]}`;
+      if(sum >= 10 && i < 2){
+        parts.push(`${names[i]} ${plus}=${sum}, tulis ${sum % 10}, simpan 1`);
+        carry = 1;
+      } else {
+        parts.push(`${names[i]} ${plus}=${sum}`);
+        carry = 0;
+      }
+    }
+    return `${a} + ${b}: ${parts.join('. ')}. Jadi ${a + b}.`;
+  }
+
+  // Penjelasan pengurangan 3 digit per kolom
+  function k3SubExplain(a, b){
+    const da = [a % 10, Math.floor(a / 10) % 10, Math.floor(a / 100)];
+    const db = [b % 10, Math.floor(b / 10) % 10, Math.floor(b / 100)];
+    const names = ['satuan', 'puluhan', 'ratusan'];
+    let borrow = 0;
+    const parts = [];
+    for(let i = 0; i < 3; i++){
+      const cur = da[i] - borrow;
+      const label = borrow ? `${names[i]} ${da[i]} dipinjam 1 jadi ${cur}` : `${names[i]} ${cur}`;
+      if(cur < db[i]){
+        parts.push(`${label}, kurang dari ${db[i]}, pinjam 10: ${cur + 10}-${db[i]}=${cur + 10 - db[i]}`);
+        borrow = 1;
+      } else {
+        parts.push(`${label}-${db[i]}=${cur - db[i]}`);
+        borrow = 0;
+      }
+    }
+    return `${a} - ${b}: ${parts.join('. ')}. Jadi ${a - b}.`;
+  }
+
+  // Memilih a dan b untuk penjumlahan 3 digit (hasil maksimal 999)
+  function k3NumsAdd(needCarry){
+    let a, b;
+    for(let i = 0; i < 40; i++){
+      a = randInt(120, 700);
+      b = randInt(101, 999 - a);
+      if(!needCarry || (a % 10) + (b % 10) >= 10) break;
+    }
+    return { a, b };
+  }
+  // Memilih a dan b untuk pengurangan 3 digit (tidak negatif)
+  function k3NumsSub(needBorrow){
+    let a, b;
+    for(let i = 0; i < 40; i++){
+      a = randInt(2, 9) * 100 + randInt(1, 9) * 10 + randInt(0, 9);
+      b = randInt(101, a - 1);
+      if(!needBorrow || (a % 10) < (b % 10)) break;
+    }
+    return { a, b };
+  }
+
+  function k3AddPlain(n){
+    const ans = n.a + n.b;
+    return {
+      text: `${n.a} + ${n.b} = ?`,
+      answer: ans,
+      explanation: k3AddExplain(n.a, n.b),
+      choices: generateNumberChoices(ans, 100, 1, 999)
+    };
+  }
+  function k3SubPlain(n){
+    const ans = n.a - n.b;
+    return {
+      text: `${n.a} - ${n.b} = ?`,
+      answer: ans,
+      explanation: k3SubExplain(n.a, n.b),
+      choices: generateNumberChoices(ans, 0, 1, 999)
+    };
+  }
+  function k3StoryAdd(n){
+    const name = pickOne(K1_NAMES), item = pickOne(K3_ITEMS);
+    const ans = n.a + n.b;
+    return {
+      text: `${name} punya ${n.a} ${item}. Lalu ditambah ${n.b} ${item}. Berapa ${item} ${name} sekarang?`,
+      answer: ans,
+      explanation: k3AddExplain(n.a, n.b),
+      choices: generateNumberChoices(ans, 100, 1, 999)
+    };
+  }
+  function k3StorySub(n){
+    const name = pickOne(K1_NAMES), item = pickOne(K3_ITEMS);
+    const ans = n.a - n.b;
+    return {
+      text: `${name} punya ${n.a} ${item}. ${n.b} ${item} diberikan ke teman. Berapa sisanya?`,
+      answer: ans,
+      explanation: k3SubExplain(n.a, n.b),
+      choices: generateNumberChoices(ans, 0, 1, 999)
+    };
+  }
+
+  // Nilai tempat bilangan 3 digit (angka ratusan, puluhan, satuan dibuat berbeda agar tidak membingungkan)
+  function k3PlaceValue(){
+    let h, p, s;
+    do {
+      h = randInt(1, 9); p = randInt(1, 9); s = randInt(1, 9);
+    } while(h === p || p === s || h === s);
+    const num = h * 100 + p * 10 + s;
+    const type = randInt(1, 3);
+    if(type === 1){
       return {
-        text: `${a} × ${b} = ?`,
-        answer: ans,
-        choices: generateNumberChoices(ans, 2, 1, 100)
+        text: `${num} = ... ratusan + ${p} puluhan + ${s} satuan`,
+        answer: h,
+        explanation: `${num} terdiri dari ${h} ratusan (${h * 100}), ${p} puluhan (${p * 10}), dan ${s} satuan. Jadi ${h}.`,
+        choices: generateNumberChoices(h, 1, 1, 9)
       };
-    } else if(diff === 'medium'){
-      // SEDANG:
-      // 50% perkalian bersusun 2 digit × 1 digit (contoh: 24 × 3 = 72)
-      // 50% pembagian bersusun (porogapit sederhana) 2 digit ÷ 1 digit tanpa sisa (contoh: 72 ÷ 3 = 24)
-      if(Math.random() < 0.5){
-        const a = randInt(12, 45);
-        const b = randInt(2, 8);
-        const ans = a * b;
-        return {
-          text: `${a} × ${b} = ?`,
-          answer: ans,
-          choices: generateNumberChoices(ans, 10, 1, 400)
-        };
-      } else {
-        const b = randInt(2, 7);
-        const maxQ = Math.floor(99 / b);
-        const minQ = 11;
-        const q = randInt(minQ, Math.max(minQ, maxQ));
-        const a = b * q;
-        return {
-          text: `${a} ÷ ${b} = ?`,
-          answer: q,
-          choices: generateNumberChoices(q, 10, 1, 99)
-        };
-      }
+    } else if(type === 2){
+      return {
+        text: `${h} ratusan + ${p} puluhan + ${s} satuan = ...`,
+        answer: num,
+        explanation: `${h * 100} + ${p * 10} + ${s} = ${num}.`,
+        choices: makeUniqueChoices(num, [h * 100 + s * 10 + p, p * 100 + h * 10 + s, h * 100 + p + s], () => randInt(101, 999))
+      };
+    }
+    return {
+      text: `Nilai angka ${p} pada bilangan ${num} adalah ...`,
+      answer: p * 10,
+      explanation: `Angka ${p} ada di tempat puluhan, jadi nilainya ${p} × 10 = ${p * 10}.`,
+      choices: makeUniqueChoices(p * 10, [p, p * 100, h * 10], () => randInt(1, 9) * 10)
+    };
+  }
+
+  // Membandingkan bilangan 3 digit: paling besar / paling kecil
+  function k3Compare(){
+    const nums = [];
+    while(nums.length < 4){
+      const n = randInt(101, 999);
+      if(!nums.includes(n)) nums.push(n);
+    }
+    const sorted = [...nums].sort((x, y) => x - y);
+    const askBig = Math.random() < 0.5;
+    const ans = askBig ? sorted[3] : sorted[0];
+    return {
+      text: askBig ? 'Bilangan mana yang paling besar?' : 'Bilangan mana yang paling kecil?',
+      answer: ans,
+      explanation: `Bandingkan ratusannya dulu. Urutan dari kecil: ${sorted.join(', ')}. ${askBig ? 'Paling besar' : 'Paling kecil'} adalah ${ans}.`,
+      choices: shuffle(nums).map(n => normalizeChoice(n))
+    };
+  }
+
+  // Tabel perkalian 1-10 (fokus tabel 6-10)
+  function k3MultTable(){
+    let a = randInt(6, 10), b = randInt(2, 10);
+    if(Math.random() < 0.5) [a, b] = [b, a];
+    const ans = a * b;
+    const big = Math.max(a, b), small = Math.min(a, b);
+    let how;
+    if(big === 10){
+      how = `${small} × 10 = ${ans}: tambahkan angka 0 di belakang ${small}.`;
+    } else if(big > 5){
+      how = `${small} × 5 = ${small * 5}, ${small} × ${big - 5} = ${small * (big - 5)}. ${small * 5} + ${small * (big - 5)} = ${ans}.`;
     } else {
-      // SULIT:
-      // 65% operasi hitung pecahan sederhana penyebut sama (contoh: 2/5 + 1/5 = 3/5)
-      // 35% perkalian 2 digit & porogapit angka lebih besar
-      if(Math.random() < 0.65){
-        const d = randInt(3, 9);
-        const isAdd = Math.random() < 0.5;
-        if(isAdd){
-          const n1 = randInt(1, Math.max(1, d - 2));
-          const n2 = randInt(1, d - n1);
-          const ansN = n1 + n2;
-          const html = `<span class="frac"><span class="top">${n1}</span><span class="bottom">${d}</span></span> + <span class="frac"><span class="top">${n2}</span><span class="bottom">${d}</span></span> = ?`;
-          const text = `${n1}/${d} + ${n2}/${d} = ?`;
-          const ansVal = `${ansN}/${d}`;
-          return {
-            text: text,
-            html: html,
-            answer: ansVal,
-            answerDisplay: ansVal,
-            choices: generateFractionChoices(ansN, d)
-          };
-        } else {
-          const n1 = randInt(2, d - 1);
-          const n2 = randInt(1, n1 - 1);
-          const ansN = n1 - n2;
-          const html = `<span class="frac"><span class="top">${n1}</span><span class="bottom">${d}</span></span> - <span class="frac"><span class="top">${n2}</span><span class="bottom">${d}</span></span> = ?`;
-          const text = `${n1}/${d} - ${n2}/${d} = ?`;
-          const ansVal = `${ansN}/${d}`;
-          return {
-            text: text,
-            html: html,
-            answer: ansVal,
-            answerDisplay: ansVal,
-            choices: generateFractionChoices(ansN, d)
-          };
-        }
-      } else {
-        const isMult = Math.random() < 0.5;
-        if(isMult){
-          const a = randInt(18, 49);
-          const b = randInt(3, 9);
-          const ans = a * b;
-          return {
-            text: `${a} × ${b} = ?`,
-            answer: ans,
-            choices: generateNumberChoices(ans, 10, 1, 9999)
-          };
-        } else {
-          const b = randInt(3, 8);
-          const maxQ = Math.floor(99 / b);
-          const q = randInt(12, Math.max(12, maxQ));
-          const a = b * q;
-          return {
-            text: `${a} ÷ ${b} = ?`,
-            answer: q,
-            choices: generateNumberChoices(q, 10, 1, 99)
-          };
-        }
-      }
+      how = `${small} × ${big} = ${Array(big).fill(small).join(' + ')} = ${ans}.`;
+    }
+    return {
+      text: `${a} × ${b} = ?`,
+      answer: ans,
+      explanation: how,
+      choices: generateNumberChoices(ans, 2, 1, 100)
+    };
+  }
+
+  // Cerita perkalian
+  function k3StoryMult(){
+    const name = pickOne(K1_NAMES), item = pickOne(K3_ITEMS);
+    const a = randInt(3, 9), b = randInt(6, 10);
+    const ans = a * b;
+    return {
+      text: `${name} punya ${a} kantong. Tiap kantong berisi ${b} ${item}. Berapa ${item} semuanya?`,
+      answer: ans,
+      explanation: `${a} × ${b} = ${ans}. Jadi ada ${ans} ${item}.`,
+      choices: generateNumberChoices(ans, 2, 1, 100)
+    };
+  }
+
+  // Perkalian bersusun 2 digit × 1 digit
+  function k3MultStacked(minA, maxA, minB, maxB, asStory){
+    let a;
+    do { a = randInt(minA, maxA); } while(a % 10 === 0);
+    const b = randInt(minB, maxB);
+    const ans = a * b;
+    const tens = Math.floor(a / 10) * 10, ones = a % 10;
+    const how = `${tens} × ${b} = ${tens * b}, ${ones} × ${b} = ${ones * b}. ${tens * b} + ${ones * b} = ${ans}.`;
+    if(asStory){
+      const name = pickOne(K1_NAMES), item = pickOne(K3_ITEMS);
+      return {
+        text: `${name} punya ${b} kotak. Tiap kotak berisi ${a} ${item}. Berapa ${item} semuanya?`,
+        answer: ans,
+        explanation: `${a} × ${b}: ${how}`,
+        choices: generateNumberChoices(ans, 10, 1, 999)
+      };
+    }
+    return {
+      text: `${a} × ${b} = ?`,
+      answer: ans,
+      explanation: `${a} × ${b}: ${how}`,
+      choices: generateNumberChoices(ans, 10, 1, 999)
+    };
+  }
+
+  // Pembagian 2 digit ÷ 1 digit tanpa sisa (cerita atau angka langsung)
+  function k3Division(minB, maxB, minQ, asStory){
+    const b = randInt(minB, maxB);
+    const maxQ = Math.floor(99 / b);
+    const q = randInt(minQ, Math.max(minQ, maxQ));
+    const a = b * q;
+    const how = `${a} ÷ ${b} = ${q}, karena ${b} × ${q} = ${a}.`;
+    if(asStory){
+      const item = pickOne(K3_ITEMS);
+      return {
+        text: `${a} ${item} dibagi rata ke ${b} kantong. Tiap kantong berisi berapa?`,
+        answer: q,
+        explanation: how,
+        choices: generateNumberChoices(q, 2, 1, 99)
+      };
+    }
+    return {
+      text: `${a} ÷ ${b} = ?`,
+      answer: q,
+      explanation: how,
+      choices: generateNumberChoices(q, 2, 1, 99)
+    };
+  }
+
+  // Kalimat matematika: mencari bilangan yang hilang
+  function k3Missing(){
+    const b = randInt(11, 60);
+    if(Math.random() < 0.5){
+      const c = randInt(b + 10, 120);
+      const a = c - b;
+      return {
+        text: `... + ${b} = ${c}`,
+        answer: a,
+        explanation: `${c} - ${b} = ${a}. Jadi bilangan yang hilang adalah ${a}.`,
+        choices: generateNumberChoices(a, 1, 1, 200)
+      };
+    }
+    const c = randInt(10, 90);
+    const a = c + b;
+    return {
+      text: `... - ${b} = ${c}`,
+      answer: a,
+      explanation: `${c} + ${b} = ${a}. Jadi bilangan yang hilang adalah ${a}.`,
+      choices: generateNumberChoices(a, 1, 1, 200)
+    };
+  }
+
+  // Pecahan berpenyebut sama: tambah atau kurang
+  function k3Fraction(){
+    const d = randInt(3, 9);
+    const isAdd = Math.random() < 0.5;
+    let n1, n2, ansN, sign;
+    if(isAdd){
+      n1 = randInt(1, Math.max(1, d - 2));
+      n2 = randInt(1, d - n1);
+      ansN = n1 + n2;
+      sign = '+';
+    } else {
+      n1 = randInt(2, d - 1);
+      n2 = randInt(1, n1 - 1);
+      ansN = n1 - n2;
+      sign = '-';
+    }
+    const ansVal = `${ansN}/${d}`;
+    return {
+      text: `${n1}/${d} ${sign} ${n2}/${d} = ?`,
+      html: `${fracHtml(n1, d)} ${sign} ${fracHtml(n2, d)} = ?`,
+      answer: ansVal,
+      answerDisplay: ansVal,
+      explanation: `Penyebut sama (${d}), jadi hitung pembilangnya saja: ${n1} ${sign} ${n2} = ${ansN}. Penyebut tetap ${d}. Jawabannya ${fracHtml(ansN, d)}.`,
+      choices: generateFractionChoices(ansN, d)
+    };
+  }
+
+  function generateQuestionK3(diff){
+    const r = Math.random();
+    const coin = Math.random() < 0.5;
+    if(diff === 'easy'){
+      // MUDAH: bilangan sampai 1.000 & tabel perkalian
+      if(r < 0.2) return k3PlaceValue();
+      if(r < 0.35) return k3Compare();
+      if(r < 0.7) return k3MultTable();
+      return k3StoryMult();
+    } else if(diff === 'medium'){
+      // SEDANG: tambah/kurang 3 digit, kali & bagi bersusun
+      if(r < 0.15) return k3AddPlain(k3NumsAdd(coin));
+      if(r < 0.3) return k3SubPlain(k3NumsSub(coin));
+      if(r < 0.5) return k3MultStacked(12, 45, 2, 8, false);
+      if(r < 0.65) return k3Division(2, 7, 11, false);
+      if(r < 0.75) return k3Missing();
+      if(r < 0.85) return coin ? k3StoryAdd(k3NumsAdd(coin)) : k3StorySub(k3NumsSub(coin));
+      return k3MultStacked(12, 45, 2, 8, true);
+    } else {
+      // SULIT: pecahan penyebut sama & tantangan
+      if(r < 0.4) return k3Fraction();
+      if(r < 0.6) return k3MultStacked(18, 49, 3, 9, coin);
+      if(r < 0.75) return k3Division(3, 8, 12, coin);
+      if(r < 0.87) return coin ? k3AddPlain(k3NumsAdd(true)) : k3SubPlain(k3NumsSub(true));
+      return coin ? k3StoryAdd(k3NumsAdd(true)) : k3StorySub(k3NumsSub(true));
     }
   }
 
