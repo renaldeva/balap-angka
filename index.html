@@ -47,16 +47,16 @@
           <h3>2 Pemain Lokal</h3>
           <div class="level-select">
             <button class="level-btn lvl-k1" data-class="k1" data-mode="2p">
-              <span>🟢 Kelas 1 SD<br><small>P1(Q/W/A/S) vs P2(Panah) • Kls 1</small></span>
+              <span>🟢 Kelas 1 SD<br><small>Tanding 2 Pemain • Kelas 1</small></span>
             </button>
             <button class="level-btn lvl-k2" data-class="k2" data-mode="2p">
-              <span>🟡 Kelas 2 SD<br><small>P1(Q/W/A/S) vs P2(Panah) • Kls 2</small></span>
+              <span>🟡 Kelas 2 SD<br><small>Tanding 2 Pemain • Kelas 2</small></span>
             </button>
             <button class="level-btn lvl-k3" data-class="k3" data-mode="2p">
-              <span>🔴 Kelas 3 SD<br><small>P1(Q/W/A/S) vs P2(Panah) • Kls 3</small></span>
+              <span>🔴 Kelas 3 SD<br><small>Tanding 2 Pemain • Kelas 3</small></span>
             </button>
             <button class="level-btn lvl-k4" data-class="k4" data-mode="2p">
-              <span>🟣 Campuran (1-3)<br><small>P1(Q/W/A/S) vs P2(Panah) • Gabungan</small></span>
+              <span>🟣 Campuran (1-3)<br><small>Tanding 2 Pemain • Gabungan</small></span>
             </button>
           </div>
         </div>
@@ -166,6 +166,7 @@
         <div class="question-text" id="questionTextP1">?</div>
         <div class="answers-grid" id="answersGridP1"></div>
         <div class="feedback" id="feedbackTextP1"></div>
+        <div class="explanation-box" id="explanationP1" style="display:none;"></div>
       </div>
 
       <!-- Player 2 Panel (Hidden in 1P mode) -->
@@ -174,6 +175,17 @@
         <div class="question-text" id="questionTextP2">?</div>
         <div class="answers-grid" id="answersGridP2"></div>
         <div class="feedback" id="feedbackTextP2"></div>
+        <div class="explanation-box" id="explanationP2" style="display:none;"></div>
+      </div>
+    </div>
+
+    <!-- Pause Overlay -->
+    <div class="pause-overlay" id="pauseOverlay" style="display:none;">
+      <div class="pause-card">
+        <div class="pause-icon">⏸️</div>
+        <h2>Game Dijeda</h2>
+        <div class="subtitle">Istirahat sejenak. Sudah siap balapan lagi?</div>
+        <button class="primary-btn" id="resumeBtn">Lanjut 🏁</button>
       </div>
     </div>
   </section>

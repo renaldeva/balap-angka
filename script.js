@@ -111,13 +111,16 @@
   let selectedDifficulty = 'easy'; // 'easy', 'medium', 'hard'
   let raceOver = true;
   let isCountdown = false;
+  let isPaused = false;
+  let countdownTimer = null;
+  let countdownVal = 3;
   let p1Name = "Kamu";
   let p2Name = "Pemain 2";
   let pendingDifficulty = 'easy';
   
   const state = {
-    p1: { pos:0, score:0, streak:0, answer:null, isAnswering:false, bestStreak:0 },
-    p2: { pos:0, score:0, streak:0, answer:null, isAnswering:false, bestStreak:0 },
+    p1: { pos:0, score:0, streak:0, answer:null, isAnswering:false, bestStreak:0, explanation:null, explanationTimer:null },
+    p2: { pos:0, score:0, streak:0, answer:null, isAnswering:false, bestStreak:0, explanation:null, explanationTimer:null },
     cpu1: { pos:0 },
     cpu2: { pos:0 }
   };
@@ -204,10 +207,12 @@
   const qTextP1 = document.getElementById('questionTextP1');
   const gridP1 = document.getElementById('answersGridP1');
   const fbP1 = document.getElementById('feedbackTextP1');
+  const expP1 = document.getElementById('explanationP1');
   
   const qTextP2 = document.getElementById('questionTextP2');
   const gridP2 = document.getElementById('answersGridP2');
   const fbP2 = document.getElementById('feedbackTextP2');
+  const expP2 = document.getElementById('explanationP2');
 
   // HUD
   const scoreP1El = document.getElementById('scoreP1');
@@ -229,9 +234,11 @@
   const diffDescHard = document.getElementById('diffDescHard');
   const diffBestScoreBox = document.getElementById('diffBestScoreBox');
 
-  // Countdown
+  // Countdown & Pause
   const countdownOverlay = document.getElementById('countdownOverlay');
   const countdownText = document.getElementById('countdownText');
+  const pauseOverlay = document.getElementById('pauseOverlay');
+  const resumeBtn = document.getElementById('resumeBtn');
 
 
   // ---------- Storage (best score per class and difficulty for 1P) ----------
@@ -821,6 +828,59 @@
     return generateQuestionK1(diff);
   }
 
+  // ---------- Question Validation & Safeguards ----------
+  // Memastikan soal valid: tepat 4 pilihan unik, jawaban benar ada di dalam pilihan, dan tidak ada pilihan negatif
+  function isQuestionValid(q){
+    if(!q || typeof q !== 'object') return false;
+    if(!q.choices || !Array.isArray(q.choices) || q.choices.length !== 4) return false;
+    
+    // Normalisasi nilai pilihan
+    const vals = q.choices.map(c => {
+      if(typeof c === 'object' && c !== null && c.val !== undefined) return c.val;
+      return c;
+    });
+
+    // Harus tepat 4 pilihan yang unik (tidak ada duplikat)
+    const uniqueVals = new Set(vals);
+    if(uniqueVals.size !== 4) return false;
+
+    // Jawaban benar harus ada di dalam daftar pilihan
+    const ans = typeof q.answer === 'object' && q.answer !== null && q.answer.val !== undefined ? q.answer.val : q.answer;
+    if(!uniqueVals.has(ans)) return false;
+
+    // Tidak boleh ada pilihan bernilai negatif
+    for(const v of vals){
+      if(typeof v === 'number' && v < 0) return false;
+      if(typeof v === 'string'){
+        const numVal = Number(v);
+        if(!isNaN(numVal) && numVal < 0) return false;
+        if(v.includes('/')){
+          const parts = v.split('/');
+          if(parts.length === 2){
+            const n = parseInt(parts[0], 10);
+            const d = parseInt(parts[1], 10);
+            if(isNaN(n) || isNaN(d) || n < 0 || d <= 0) return false;
+          }
+        }
+      }
+    }
+
+    return true;
+  }
+
+  // Generate ulang jika soal tidak memenuhi kriteria validasi
+  function getValidQuestion(cls, diff){
+    let maxAttempts = 20;
+    while(maxAttempts > 0){
+      maxAttempts--;
+      const q = generateQuestion(cls, diff);
+      if(isQuestionValid(q)){
+        return q;
+      }
+    }
+    return generateQuestion(cls, diff);
+  }
+
   // ---------- Visual Effects ----------
   function spawnSmoke(laneEl, carEl){
     const smoke = document.createElement('div');
@@ -853,13 +913,14 @@
 
   // ---------- Question Rendering ----------
   function renderQuestionFor(playerKey){
-    if(raceOver || isCountdown) return;
+    if(raceOver || isCountdown || isPaused) return;
     const playerState = state[playerKey];
     playerState.isAnswering = false;
     
-    const q = generateQuestion(selectedClass, selectedDifficulty);
+    const q = getValidQuestion(selectedClass, selectedDifficulty);
     playerState.answer = q.answer;
     playerState.answerDisplay = q.answerDisplay || (q.html ? q.text : String(q.answer));
+    playerState.explanation = q.explanation || null;
     
     const qText = playerKey === 'p1' ? qTextP1 : qTextP2;
     const grid = playerKey === 'p1' ? gridP1 : gridP2;
@@ -881,14 +942,14 @@
       btn.dataset.index = index;
       
       btn.addEventListener('click', () => {
-        if(gameMode === '1p') handleAnswerClick(playerKey, choiceObj.val, index);
+        if(gameMode === '1p' && !isPaused) handleAnswerClick(playerKey, choiceObj.val, index);
       });
       grid.appendChild(btn);
     });
   }
 
   function handleAnswerClick(playerKey, choiceVal, btnIndex){
-    if(raceOver || isCountdown) return;
+    if(raceOver || isCountdown || isPaused) return;
     const playerState = state[playerKey];
     if(playerState.isAnswering) return;
     
@@ -896,6 +957,7 @@
     const grid = playerKey === 'p1' ? gridP1 : gridP2;
     const fb = playerKey === 'p1' ? fbP1 : fbP2;
     const panel = playerKey === 'p1' ? panelP1 : panelP2;
+    const expBox = playerKey === 'p1' ? expP1 : expP2;
     
     const allBtns = grid.querySelectorAll('.answer-btn');
     allBtns.forEach(b => b.disabled = true);
@@ -903,6 +965,13 @@
     const btnEl = allBtns[btnIndex];
 
     if(choiceVal === playerState.answer){
+      // Sembunyikan kotak penjelasan lama jika ada saat pemain menjawab benar
+      if(playerState.explanationTimer){
+        clearTimeout(playerState.explanationTimer);
+        playerState.explanationTimer = null;
+      }
+      if(expBox) expBox.style.display = 'none';
+
       if(btnEl) btnEl.classList.add('correct');
       playerState.score++;
       playerState.streak++;
@@ -929,10 +998,25 @@
       });
       
       playerState.streak = 0;
-      moveRacer(playerKey, 2);
+      moveRacer(playerKey, 0); // Kompensasi jawaban salah diubah jadi 0% (sebelumnya 2%)
       
-      fb.textContent = 'Salah: ' + playerState.answerDisplay;
+      fb.textContent = 'Salah! ❌';
       fb.className = 'feedback bad';
+
+      // Kotak penjelasan: tampil sekitar 3 detik, tidak menghalangi balapan
+      if(expBox){
+        const expText = playerState.explanation
+          ? playerState.explanation
+          : `Jawaban yang benar: <strong>${playerState.answerDisplay}</strong>`;
+        expBox.innerHTML = `💡 ${expText}`;
+        expBox.style.display = 'block';
+
+        if(playerState.explanationTimer) clearTimeout(playerState.explanationTimer);
+        playerState.explanationTimer = setTimeout(() => {
+          expBox.style.display = 'none';
+          playerState.explanationTimer = null;
+        }, 3000);
+      }
       
       panel.classList.remove('shake');
       void panel.offsetWidth; // trigger reflow
@@ -943,7 +1027,7 @@
     updateHud();
     
     setTimeout(() => {
-      if(!raceOver && !isCountdown) renderQuestionFor(playerKey);
+      if(!raceOver && !isCountdown && !isPaused) renderQuestionFor(playerKey);
     }, 900);
   }
 
@@ -996,7 +1080,7 @@
 
   // ---------- Keyboard Handling ----------
   document.addEventListener('keydown', function(e){
-    if(raceOver || isCountdown) return;
+    if(raceOver || isCountdown || isPaused) return;
     const key = e.key.toLowerCase();
     
     // 1P Mode Keyboard Support (1, 2, 3, 4)
@@ -1041,22 +1125,41 @@
 
 
   // ---------- Race Lifecycle ----------
-  function startCountdown(){
+  function startCpuLoop(){
+    stopCpuLoop();
+    let cpuInterval = 1250;
+    if(selectedDifficulty === 'easy') cpuInterval = 1400;
+    else if(selectedDifficulty === 'hard') cpuInterval = 1100;
+    cpuTimer = setInterval(moveCpus, cpuInterval);
+  }
+
+  function stopCpuLoop(){
+    if(cpuTimer){
+      clearInterval(cpuTimer);
+      cpuTimer = null;
+    }
+  }
+
+  function startCountdown(initialCount = 3){
     isCountdown = true;
+    countdownVal = initialCount;
     countdownOverlay.style.display = 'flex';
     
-    let count = 3;
-    countdownText.textContent = count;
-    
+    if(countdownTimer){
+      clearTimeout(countdownTimer);
+      countdownTimer = null;
+    }
+
     function tick(){
-      if(count > 0){
-        countdownText.textContent = count;
+      if(isPaused) return;
+      if(countdownVal > 0){
+        countdownText.textContent = countdownVal;
         countdownText.style.animation = 'none';
         void countdownText.offsetWidth;
         countdownText.style.animation = 'popIn 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards';
         AudioController.playBeep();
-        count--;
-        setTimeout(tick, 1000);
+        countdownVal--;
+        countdownTimer = setTimeout(tick, 1000);
       } else {
         countdownText.textContent = 'GO!';
         countdownText.style.animation = 'none';
@@ -1064,18 +1167,16 @@
         countdownText.style.animation = 'popIn 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards';
         AudioController.playGo();
         AudioController.playRaceBGM();
-        setTimeout(() => {
+        countdownTimer = setTimeout(() => {
+          if(isPaused) return;
           countdownOverlay.style.display = 'none';
           isCountdown = false;
+          countdownTimer = null;
           renderQuestionFor('p1');
           if(gameMode === '2p') renderQuestionFor('p2');
           
           if(gameMode === '1p'){
-            if(cpuTimer) clearInterval(cpuTimer);
-            let cpuInterval = 1250;
-            if(selectedDifficulty === 'easy') cpuInterval = 1400;
-            else if(selectedDifficulty === 'hard') cpuInterval = 1100;
-            cpuTimer = setInterval(moveCpus, cpuInterval);
+            startCpuLoop();
           }
         }, 800);
       }
@@ -1093,8 +1194,17 @@
     // Reset state
     raceOver = false;
     isCountdown = false;
-    state.p1 = { pos:0, score:0, streak:0, answer:null, isAnswering:false, bestStreak:0 };
-    state.p2 = { pos:0, score:0, streak:0, answer:null, isAnswering:false, bestStreak:0 };
+    isPaused = false;
+    if(pauseOverlay) pauseOverlay.style.display = 'none';
+
+    // Bersihkan kotak penjelasan dan timer
+    if(state.p1.explanationTimer) clearTimeout(state.p1.explanationTimer);
+    if(state.p2.explanationTimer) clearTimeout(state.p2.explanationTimer);
+    if(expP1) expP1.style.display = 'none';
+    if(expP2) expP2.style.display = 'none';
+
+    state.p1 = { pos:0, score:0, streak:0, answer:null, isAnswering:false, bestStreak:0, explanation:null, explanationTimer:null };
+    state.p2 = { pos:0, score:0, streak:0, answer:null, isAnswering:false, bestStreak:0, explanation:null, explanationTimer:null };
     state.cpu1 = { pos:0 };
     state.cpu2 = { pos:0 };
     
@@ -1136,13 +1246,23 @@
     qTextP1.textContent = '?'; gridP1.innerHTML = ''; fbP1.textContent = '';
     qTextP2.textContent = '?'; gridP2.innerHTML = ''; fbP2.textContent = '';
     
-    startCountdown();
+    startCountdown(3);
   }
 
   function endRace(winner){
     raceOver = true;
+    isPaused = false;
     AudioController.stopBGM();
-    if(cpuTimer) clearInterval(cpuTimer);
+    stopCpuLoop();
+    if(countdownTimer){
+      clearTimeout(countdownTimer);
+      countdownTimer = null;
+    }
+    if(pauseOverlay) pauseOverlay.style.display = 'none';
+    if(state.p1.explanationTimer) clearTimeout(state.p1.explanationTimer);
+    if(state.p2.explanationTimer) clearTimeout(state.p2.explanationTimer);
+    if(expP1) expP1.style.display = 'none';
+    if(expP2) expP2.style.display = 'none';
 
     const endEmoji = document.getElementById('endEmoji');
     const endTitle = document.getElementById('endTitle');
@@ -1308,6 +1428,52 @@
     showScreen('start');
     AudioController.playMenuBGM();
   });
+
+  // ---------- Visibility Change (Auto-Pause) ----------
+  document.addEventListener('visibilitychange', function(){
+    if(document.visibilityState === 'hidden'){
+      // Tab tidak aktif / disembunyikan
+      if(screens.game.classList.contains('active') && !raceOver){
+        isPaused = true;
+        stopCpuLoop();
+        if(countdownTimer){
+          clearTimeout(countdownTimer);
+          countdownTimer = null;
+        }
+        AudioController.stopBGM();
+      } else if(screens.start.classList.contains('active')){
+        AudioController.stopBGM();
+      }
+    } else {
+      // Tab aktif kembali
+      if(screens.game.classList.contains('active') && !raceOver && isPaused){
+        // Tampilkan overlay pause agar siswa siap melanjutkan
+        if(pauseOverlay) pauseOverlay.style.display = 'flex';
+      } else if(screens.start.classList.contains('active')){
+        // Jika di menu start dan tidak mute, bunyikan kembali menu BGM
+        AudioController.playMenuBGM();
+      }
+    }
+  });
+
+  if(resumeBtn){
+    resumeBtn.addEventListener('click', function(){
+      AudioController.init();
+      AudioController.playClick();
+      if(pauseOverlay) pauseOverlay.style.display = 'none';
+      isPaused = false;
+      
+      if(isCountdown){
+        // Lanjutkan countdown dari nilai terakhir atau 3
+        startCountdown(countdownVal > 0 ? countdownVal : 3);
+      } else if(!raceOver){
+        AudioController.playRaceBGM();
+        if(gameMode === '1p'){
+          startCpuLoop();
+        }
+      }
+    });
+  }
 
   // Init
   renderBestScores();
